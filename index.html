@@ -1,0 +1,1888 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Be&#43;Vietnam&#43;Pro:wght@400;500;600;700&amp;display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="app"></div>
+<script>
+var MODE = "site";
+var BOOT = {"api":"https://script.google.com/macros/s/AKfycbzRf0CS6Y2PQ85v5ZHHkfe9Nl1VR6f7Vf0GUBDqVs-VZJ5j-weu7p6HFx90UVJuptpm/exec","name":"Phòng Đối ngoại - Trường Đại học Bách khoa-ĐHQG-HCM","built":"25/11/2026 23:42"};
+</script>
+
+<script>
+
+
+function esc(s) {
+  return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) {
+    return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+  });
+}
+function paras(s) {
+  return String(s || '').split(/\n+/).map(function (x) { return x.trim(); })
+    .filter(Boolean).map(function (x) { return '<p>' + esc(x) + '</p>'; }).join('');
+}
+var THU = ['Chủ nhật', 'Thứ Hai', 'Thứ Ba', 'Thứ Tư', 'Thứ Năm', 'Thứ Sáu', 'Thứ Bảy'];
+function fmtDate(iso) {
+  var m = String(iso || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!m) return '';
+  var d = new Date(+m[1], +m[2] - 1, +m[3]);
+  return THU[d.getDay()] + ', ngày ' + m[3] + '/' + m[2] + '/' + m[1];
+}
+function timeLine(ev) {
+  var t = ev.timeStart ? ev.timeStart + (ev.timeEnd ? ' - ' + ev.timeEnd : '') : '';
+  return [t, fmtDate(ev.date)].filter(Boolean).join(', ');
+}
+function deadlineText(d) {
+  var m = String(d || '').match(/(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})/);
+  if (!m) return '';
+  var dt = new Date(+m[1], +m[2] - 1, +m[3]);
+  return m[4] + ':' + m[5] + ' ngày ' + m[3] + '/' + m[2] + '/' + m[1] + ' (' + THU[dt.getDay()] + ')';
+}
+function hexRgb(h) {
+  h = String(h || '#0b3d91').replace('#', '');
+  if (h.length === 3) h = h.split('').map(function (c) { return c + c; }).join('');
+  var n = parseInt(h, 16);
+  if (isNaN(n)) n = 0x0b3d91;
+  return [(n >> 16) & 255, (n >> 8) & 255, n & 255];
+}
+function mix(rgb, to, t) {
+  return 'rgb(' + rgb.map(function (v, i) { return Math.round(v + (to[i] - v) * t); }).join(',') + ')';
+}
+function themeVars(color) {
+  var c = hexRgb(color);
+  return '--c:rgb(' + c.join(',') + ');--cd:' + mix(c, [0, 0, 0], 0.28) + ';--cl:' + mix(c, [255, 255, 255], 0.9) +
+    ';--cm:' + mix(c, [255, 255, 255], 0.75) + ';';
+}
+function initials(name) {
+  var s = String(name || '').replace(/\b(prof|assoc|dr|mr|ms|mrs|gs|pgs|ts|ths|ks|ncs|tskh)\.?/gi, '')
+    .replace(/[.,]/g, ' ').trim().split(/\s+/).filter(Boolean);
+  return (s.slice(0, 2).map(function (w) { return w.charAt(0); }).join('') || '?').toUpperCase();
+}
+var SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">';
+var IC = {
+  clock: SVG + '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  cal: SVG + '<rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg>',
+  pin: SVG + '<path d="M12 22s7-6.2 7-12a7 7 0 1 0-14 0c0 5.8 7 12 7 12z"/><circle cx="12" cy="10" r="2.5"/></svg>',
+  users: SVG + '<path d="M17 21v-2a4 4 0 0 0-4-4H7a4 4 0 0 0-4 4v2"/><circle cx="10" cy="7" r="4"/><path d="M21 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></svg>',
+  org: SVG + '<path d="M3 21h18M5 21V7l7-4 7 4v14M9 9h1M14 9h1M9 13h1M14 13h1M9 17h1M14 17h1"/></svg>',
+  alarm: SVG + '<circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2M5 3 2 6M19 3l3 3"/></svg>',
+  ticket: SVG + '<path d="M3 9a3 3 0 0 0 0 6v4h18v-4a3 3 0 0 1 0-6V5H3z"/><path d="M13 5v14" stroke-dasharray="2 3"/></svg>',
+  info: SVG + '<circle cx="12" cy="12" r="9"/><path d="M12 16v-4M12 8h.01"/></svg>',
+  mail: SVG + '<rect x="3" y="5" width="18" height="14" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  check: SVG + '<path d="M20 6 9 17l-5-5"/></svg>',
+  lock: SVG + '<rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>'
+};
+
+var PAGE_CSS = [
+  '*{box-sizing:border-box}',
+  'body{margin:0;font-family:"Be Vietnam Pro",system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif;color:#1f2937;background:#f3f5f9;line-height:1.6;-webkit-font-smoothing:antialiased}',
+  '.pg{min-height:100vh;background:#f3f5f9}',
+  '.wrap{max-width:960px;margin:0 auto;padding:0 20px}',
+  '.hero{background:linear-gradient(135deg,var(--c) 0%,var(--cd) 100%);color:#fff;padding:46px 0 64px;position:relative;overflow:hidden}',
+  '.hero:before{content:"";position:absolute;right:-90px;top:-110px;width:360px;height:360px;border-radius:50%;background:rgba(255,255,255,.07)}',
+  '.hero:after{content:"";position:absolute;left:-60px;bottom:-140px;width:280px;height:280px;border-radius:50%;background:rgba(255,255,255,.05)}',
+  '.hero-in{position:relative;z-index:1}',
+  '.logo{display:block;max-height:58px;max-width:240px;margin-bottom:18px;background:#fff;padding:6px 10px;border-radius:8px}',
+  '.tag{display:inline-block;font-size:12px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;padding:5px 13px;border-radius:999px;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.32)}',
+  '.hero h1{font-size:32px;line-height:1.28;margin:14px 0 10px;font-weight:700;max-width:860px;letter-spacing:-.01em}',
+  '.org{opacity:.92;font-size:15px}',
+  '.chips{display:flex;flex-wrap:wrap;gap:10px;margin-top:22px}',
+  '.chip{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.13);border-radius:10px;padding:8px 14px;font-size:14px;font-weight:500}',
+  '.chip svg{width:18px;height:18px;flex:none}',
+  'main.wrap{padding-bottom:36px}',
+  '.card{background:#fff;border-radius:16px;box-shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.06);padding:28px 30px;margin-top:20px}',
+  '.tpl-banner main>.card:first-child,.tpl-poster main>.card:first-child{margin-top:-30px;position:relative;z-index:2}',
+  '.card h2{font-size:13px;letter-spacing:.12em;text-transform:uppercase;color:var(--c);margin:0 0 18px;font-weight:700;display:flex;align-items:center;gap:12px}',
+  '.card h2:after{content:"";flex:1;height:1px;background:#eceef2}',
+  '.info{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px 26px}',
+  '.it{display:flex;gap:12px;align-items:flex-start}',
+  '.ic{width:40px;height:40px;border-radius:11px;background:var(--cl);color:var(--c);display:flex;align-items:center;justify-content:center;flex:none}',
+  '.ic svg{width:20px;height:20px}',
+  '.k{font-size:12.5px;color:#6b7280;line-height:1.3;margin-bottom:2px}',
+  '.v{font-weight:600;color:#111827}',
+  '.note{margin-top:18px;padding:12px 16px;background:var(--cl);border-left:4px solid var(--c);border-radius:8px;font-size:14.5px}',
+  '.spk{display:flex;gap:22px;align-items:center}',
+  '.spk+.spk{margin-top:20px;padding-top:20px;border-top:1px solid #f0f1f4}',
+  '.ph-img,.ph{width:124px;height:124px;border-radius:50%;object-fit:cover;flex:none;border:4px solid var(--cl);background:var(--cl)}',
+  '.ph{display:flex;align-items:center;justify-content:center;color:var(--c);font-size:36px;font-weight:700}',
+  '.spk .n{font-size:20px;font-weight:700;color:#111827;line-height:1.35}',
+  '.spk .a{color:#4b5563;margin-top:4px}',
+  '.talk+.talk{margin-top:26px;padding-top:24px;border-top:1px solid #f0f1f4}',
+  '.tt{font-size:21px;font-weight:700;color:#111827;line-height:1.4;margin:0 0 6px}',
+  '.by{font-size:14px;color:var(--c);font-weight:600;margin-bottom:14px}',
+  '.lb{font-size:12px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:#6b7280;margin-bottom:6px}',
+  '.abs p{margin:0 0 12px;text-align:justify}',
+  '.seats{display:flex;align-items:center;gap:12px;margin-bottom:8px;font-size:14px}',
+  '.seats svg{width:20px;height:20px;color:var(--c)}',
+  '.bar{flex:1;height:8px;background:#eef0f4;border-radius:99px;overflow:hidden;min-width:60px}',
+  '.bar i{display:block;height:100%;background:var(--c);border-radius:99px}',
+  '.dl{font-size:14px;color:#4b5563;margin-bottom:22px}',
+  '.fld{margin-bottom:18px}',
+  '.lbl{display:block;font-weight:600;margin-bottom:6px;font-size:15px;color:#111827}',
+  '.req{color:#dc2626;margin-left:3px}',
+  '.help{font-size:13px;color:#6b7280;margin:-3px 0 7px}',
+  '.inp{width:100%;padding:11px 13px;border:1px solid #d1d5db;border-radius:10px;font:inherit;font-size:15px;background:#fff;color:#111827;transition:border-color .15s,box-shadow .15s}',
+  '.inp:focus,.oth:focus{outline:0;border-color:var(--c);box-shadow:0 0 0 3px var(--cm)}',
+  'textarea.inp{resize:vertical;min-height:86px}',
+  '.opts{display:flex;flex-direction:column;gap:8px}',
+  '.opt{display:flex;align-items:center;gap:10px;padding:10px 13px;border:1px solid #e5e7eb;border-radius:10px;cursor:pointer;background:#fff}',
+  '.opt input[type=radio],.opt input[type=checkbox]{accent-color:var(--c);width:18px;height:18px;margin:0;flex:none}',
+  '.opt.on{border-color:var(--c);background:var(--cl)}',
+  '.oth{flex:1;min-width:0;border:0;border-bottom:1px solid #d1d5db;padding:4px 2px;font:inherit;background:transparent}',
+  '.fld.bad .inp,.fld.bad .opt{border-color:#dc2626}',
+  '.err{color:#dc2626;font-size:13px;margin-top:5px;display:none}',
+  '.fld.bad .err{display:block}',
+  '.btn{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:14px 20px;border:0;border-radius:12px;background:var(--c);color:#fff;font:inherit;font-weight:700;font-size:16px;cursor:pointer;margin-top:6px}',
+  '.btn:hover{background:var(--cd)}',
+  '.btn[disabled]{opacity:.65;cursor:wait}',
+  '.fmsg{display:none;margin:4px 0 10px;padding:10px 14px;border-radius:10px;background:#fef2f2;color:#b91c1c;font-size:14px}',
+  '.fmsg.on{display:block}',
+  '.closed,.done{text-align:center;padding:28px 18px;border-radius:12px;background:#f9fafb}',
+  '.closed svg,.done svg{width:30px;height:30px}',
+  '.badge{width:62px;height:62px;border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center}',
+  '.closed .badge{background:#f3f4f6;color:#6b7280}',
+  '.done .badge{background:#dcfce7;color:#16a34a}',
+  '.done h3{margin:0 0 6px;font-size:20px;color:#111827}',
+  '.done .stt{display:inline-block;margin:10px 0;padding:6px 16px;border-radius:999px;background:var(--cl);color:var(--c);font-weight:700}',
+  '.ft{text-align:center;color:#6b7280;font-size:13px;padding:10px 20px 36px}',
+  '.ft b{color:#374151}',
+   
+  '.tpl-twocol .hero{padding:36px 0 44px}',
+  '.tpl-twocol .wrap{max-width:1180px}',
+  '.grid2{display:grid;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr);gap:24px;align-items:start}',
+  '.tpl-twocol .col-side{position:sticky;top:16px}',
+  '.tpl-twocol .info{grid-template-columns:minmax(0,1fr)}',
+   
+  '.tpl-poster .hero{text-align:center;padding:50px 0 128px}',
+  '.tpl-poster .hero h1{margin-left:auto;margin-right:auto;font-size:34px}',
+  '.tpl-poster .logo{margin-left:auto;margin-right:auto}',
+  '.tpl-poster .chips{justify-content:center}',
+  '.hero-spk{display:flex;justify-content:center;gap:30px;margin-top:-104px;position:relative;z-index:3;flex-wrap:wrap}',
+  '.hs{text-align:center;width:250px}',
+  '.hs .ph-img,.hs .ph{width:184px;height:184px;margin:0 auto;border:6px solid #fff;box-shadow:0 10px 28px rgba(15,23,42,.18)}',
+  '.hs .ph{font-size:54px}',
+  '.hs .n{font-weight:700;font-size:19px;margin-top:12px;color:#111827;line-height:1.35}',
+  '.hs .a{font-size:13.5px;color:#4b5563;margin-top:2px}',
+  '.tpl-poster main>.card:first-child{margin-top:26px}',
+  '.tpl-poster .tt{text-align:center;font-size:23px}',
+  '.tpl-poster .by{text-align:center}',
+   
+  '.tpl-minimal,.tpl-minimal .pgbg{background:var(--cl)}',
+  '.tpl-minimal .wrap{max-width:780px}',
+  '.tpl-minimal .hero{background:none;color:#1f2937;padding:26px 0 0}',
+  '.tpl-minimal .hero:before,.tpl-minimal .hero:after{display:none}',
+  '.tpl-minimal .hero-in{background:#fff;border-top:10px solid var(--c);border-radius:14px;padding:26px 30px;box-shadow:0 1px 3px rgba(16,24,40,.08)}',
+  '.tpl-minimal .tag{background:var(--cl);border-color:var(--cm);color:var(--c)}',
+  '.tpl-minimal .hero h1{font-size:28px;color:#111827}',
+  '.tpl-minimal .org{color:#4b5563}',
+  '.tpl-minimal .chip{background:#f3f4f6;color:#374151}',
+  '.tpl-minimal .logo{padding:0}',
+  '.tpl-minimal .card{border-radius:14px;box-shadow:0 1px 3px rgba(16,24,40,.08);margin-top:14px}',
+  '.tpl-minimal .info{grid-template-columns:minmax(0,1fr)}',
+  '@media(max-width:860px){.grid2{grid-template-columns:minmax(0,1fr)}.tpl-twocol .col-side{position:static}}',
+  '@media(max-width:640px){.wrap{padding:0 14px}.hero{padding:30px 0 52px}.hero h1,.tpl-poster .hero h1{font-size:23px}.tpl-minimal .hero h1{font-size:22px}',
+  '.card{padding:22px 18px;border-radius:14px}.tpl-minimal .hero-in{padding:22px 18px}.info{grid-template-columns:minmax(0,1fr)}',
+  '.spk{flex-direction:column;text-align:center;gap:12px}.chip{font-size:13px;padding:7px 11px}.tt,.tpl-poster .tt{font-size:19px}',
+  '.abs p{text-align:left}.hs .ph-img,.hs .ph{width:150px;height:150px}.tpl-poster .hero{padding-bottom:110px}.hero-spk{margin-top:-90px}}'
+].join('\n');
+
+var DEFAULT_BLOCKS = [
+  { id: 'event', show: true }, { id: 'speaker', show: true }, { id: 'abstract', show: true }, { id: 'form', show: true }
+];
+var BLOCK_NAMES = { event: 'Thông tin sự kiện', speaker: 'Diễn giả', abstract: 'Bài tham luận', form: 'Thông tin đăng ký' };
+
+function photoHtml(sp) {
+  return sp.photo ? '<img class="ph-img" src="' + esc(sp.photo) + '" alt="' + esc(sp.name) + '">'
+    : '<div class="ph">' + esc(initials(sp.name)) + '</div>';
+}
+function chip(icon, txt) { return '<div class="chip">' + icon + '<span>' + esc(txt) + '</span></div>'; }
+function item(icon, k, v) {
+  return v ? '<div class="it"><div class="ic">' + icon + '</div><div><div class="k">' + esc(k) + '</div><div class="v">' + esc(v) + '</div></div></div>' : '';
+}
+function spList(cfg) {
+  return (cfg.speakers || []).filter(function (s) { return s.name || s.photo || s.talkTitle || s.abstract; });
+}
+
+function heroHtml(cfg, tpl) {
+  var ev = cfg.event || {}, L = cfg.layout || {};
+  var chips = [];
+  var tl = timeLine(ev);
+  if (tl) chips.push(chip(IC.clock, tl));
+  if (ev.venue) chips.push(chip(IC.pin, ev.venue));
+  var h = '<header class="hero"><div class="wrap"><div class="hero-in">' +
+    (L.logo ? '<img class="logo" src="' + esc(L.logo) + '" alt="">' : '') +
+    (ev.type ? '<span class="tag">' + esc(ev.type) + '</span>' : '') +
+    '<h1>' + esc(ev.title || 'Tên sự kiện') + '</h1>' +
+    (ev.organizer ? '<div class="org">' + esc(ev.organizer) + '</div>' : '') +
+    (chips.length ? '<div class="chips">' + chips.join('') + '</div>' : '') +
+    '</div></div></header>';
+  if (tpl === 'poster') {
+    var sp = spList(cfg).filter(function (s) { return s.name || s.photo; });
+    if (sp.length) {
+      h += '<div class="wrap"><div class="hero-spk">' + sp.map(function (s) {
+        return '<div class="hs">' + photoHtml(s) + '<div class="n">' + esc(s.name) + '</div><div class="a">' + esc(s.affiliation) + '</div></div>';
+      }).join('') + '</div></div>';
+    }
+  }
+  return h;
+}
+
+function blkEvent(cfg, st) {
+  var ev = cfg.event || {}, r = cfg.reg || {};
+  var cap = +r.capacity || 0;
+  var seats = cap ? 'Tối đa ' + cap + ' chỗ' + (st && st.count ? ', còn ' + st.remaining + ' chỗ' : '') : '';
+  var h = item(IC.clock, 'Thời gian', timeLine(ev)) + item(IC.pin, 'Địa điểm', ev.venue) +
+    item(IC.users, 'Đối tượng tham dự', ev.audience) + item(IC.org, 'Đơn vị tổ chức', ev.organizer) +
+    item(IC.alarm, 'Hạn đăng ký', r.deadline ? 'Trước ' + deadlineText(r.deadline) : '') +
+    item(IC.ticket, 'Số lượng', seats);
+  return '<section class="card" id="blk-event"><h2>Thông tin sự kiện</h2><div class="info">' + h + '</div>' +
+    (ev.note ? '<div class="note">' + esc(ev.note).replace(/\n/g, '<br>') + '</div>' : '') + '</section>';
+}
+
+function blkSpeaker(cfg) {
+  var sp = spList(cfg).filter(function (s) { return s.name || s.photo; });
+  if (!sp.length) return '';
+  return '<section class="card" id="blk-speaker"><h2>' + (sp.length > 1 ? 'Diễn giả' : 'Diễn giả') + '</h2>' + sp.map(function (s) {
+    return '<div class="spk">' + photoHtml(s) + '<div><div class="n">' + esc(s.name) + '</div>' +
+      (s.affiliation ? '<div class="a">' + esc(s.affiliation) + '</div>' : '') + '</div></div>';
+  }).join('') + '</section>';
+}
+
+function blkAbstract(cfg) {
+  var sp = spList(cfg).filter(function (s) { return s.talkTitle || s.abstract; });
+  if (!sp.length) return '';
+  return '<section class="card" id="blk-abstract"><h2>Bài tham luận</h2>' + sp.map(function (s) {
+    return '<div class="talk">' + (s.talkTitle ? '<div class="tt">' + esc(s.talkTitle) + '</div>' : '') +
+      (s.name ? '<div class="by">' + esc(s.name) + '</div>' : '') +
+      (s.abstract ? '<div class="lb">Tóm tắt</div><div class="abs">' + paras(s.abstract) + '</div>' : '') + '</div>';
+  }).join('') + '</section>';
+}
+
+function fieldHtml(f) {
+  var id = 'f_' + f.key;
+  var req = f.required ? '<span class="req">*</span>' : '';
+  var help = f.help ? '<div class="help">' + esc(f.help) + '</div>' : '';
+  var ph = f.placeholder ? ' placeholder="' + esc(f.placeholder) + '"' : '';
+  var inp;
+  if (f.type === 'radio' || f.type === 'checkbox') {
+    var t = f.type;
+    inp = '<div class="opts">' + (f.options || []).map(function (o, i) {
+      return '<label class="opt"><input type="' + t + '" name="' + id + '" value="' + esc(o) + '"><span>' + esc(o) + '</span></label>';
+    }).join('') + (f.other ? '<label class="opt"><input type="' + t + '" name="' + id + '" value="__other"><span>Khác:</span>' +
+      '<input class="oth" type="text" data-other="' + esc(f.key) + '" aria-label="Khác"></label>' : '') + '</div>';
+  } else if (f.type === 'select') {
+    inp = '<select class="inp" id="' + id + '" name="' + id + '"><option value="">Chọn...</option>' +
+      (f.options || []).map(function (o) { return '<option>' + esc(o) + '</option>'; }).join('') + '</select>';
+  } else if (f.type === 'textarea') {
+    inp = '<textarea class="inp" id="' + id + '" name="' + id + '" rows="3"' + ph + '></textarea>';
+  } else {
+    var ty = { email: 'email', tel: 'tel', number: 'number', date: 'date' }[f.type] || 'text';
+    var extra = f.type === 'tel' ? ' inputmode="tel" autocomplete="tel"' : f.type === 'email' ? ' autocomplete="email"' : '';
+    inp = '<input class="inp" type="' + ty + '" id="' + id + '" name="' + id + '"' + ph + extra + '>';
+  }
+  return '<div class="fld" data-key="' + esc(f.key) + '" data-type="' + esc(f.type) + '" data-req="' + (f.required ? 1 : 0) + '">' +
+    '<label class="lbl" for="' + id + '">' + esc(f.label) + req + '</label>' + help + inp + '<div class="err"></div></div>';
+}
+
+function seatsInner(cap, st) {
+  if (st.pending) return IC.ticket + '<span>Tối đa <b>' + cap + '</b> chỗ</span>';
+  var pct = Math.min(100, Math.round((st.count || 0) * 100 / cap));
+  return IC.ticket + '<span>Còn <b>' + st.remaining + '</b>/' + cap + ' chỗ</span><div class="bar"><i style="width:' + Math.max(pct, 2) + '%"></i></div>';
+}
+
+function blkForm(cfg, st, opt) {
+  var r = cfg.reg || {};
+  var cap = +r.capacity || 0;
+  st = st || { open: true, count: 0, remaining: cap };
+  var seats = cap ? '<div class="seats" id="seats">' + seatsInner(cap, st) + '</div>' : '';
+  var dl = r.deadline ? '<div class="dl">Hạn đăng ký: trước <b>' + esc(deadlineText(r.deadline)) + '</b></div>' : '';
+  var head = '<section class="card" id="blk-form"><h2>Đăng ký tham dự</h2>';
+  if (!st.open) {
+    return head + seats + '<div class="closed"><div class="badge">' + IC.lock + '</div>' + esc(st.message || 'Đã đóng đăng ký.') + '</div></section>';
+  }
+  var wl = st.waitlist ? '<div class="note" style="margin:0 0 18px">Sự kiện đã đủ số lượng chính thức. Đăng ký mới sẽ được đưa vào danh sách dự bị.</div>' : '';
+  return head + seats + dl + wl + '<form id="regForm" novalidate>' + (cfg.fields || []).map(fieldHtml).join('') +
+    '<div class="fmsg" id="fmsg"></div><button class="btn" type="' + (opt && opt.preview ? 'button' : 'submit') + '" id="btnSubmit">Gửi đăng ký</button></form></section>';
+}
+
+function footHtml(cfg, opt) {
+  var ev = cfg.event || {};
+  var a = [];
+  if (ev.organizer) a.push('<b>' + esc(ev.organizer) + '</b>');
+  if (ev.contact) a.push('Liên hệ: ' + esc(ev.contact));
+  if (opt && opt.site) a.push('<a href="./" style="color:inherit">Xem các sự kiện khác</a>');
+  return a.length ? '<footer class="ft">' + a.join('<br>') + '</footer>' : '';
+}
+
+function renderPage(cfg, st, opt) {
+  opt = opt || {};
+  var L = cfg.layout || {};
+  var tpl = L.template || 'banner';
+  var blocks = (L.blocks && L.blocks.length ? L.blocks : DEFAULT_BLOCKS).filter(function (b) {
+    if (b.id === 'form') return true;
+    if (tpl === 'poster' && b.id === 'speaker') return false;
+    return b.show;
+  });
+  var parts = { event: blkEvent(cfg, st), speaker: blkSpeaker(cfg), abstract: blkAbstract(cfg), form: blkForm(cfg, st, opt) };
+  var body;
+  if (tpl === 'twocol') {
+    body = '<div class="grid2"><div class="col-main">' + blocks.filter(function (b) { return b.id !== 'form'; })
+      .map(function (b) { return parts[b.id]; }).join('') + '</div><div class="col-side">' + parts.form + '</div></div>';
+  } else {
+    body = blocks.map(function (b) { return parts[b.id]; }).join('');
+  }
+  return '<div class="pg tpl-' + tpl + '" style="' + themeVars(L.color) + '">' + heroHtml(cfg, tpl) +
+    '<main class="wrap">' + body + '</main>' + footHtml(cfg, opt) + '</div>';
+}
+
+function addStyle(css) {
+  var s = document.createElement('style');
+  s.textContent = css;
+  document.head.appendChild(s);
+}
+</script>
+
+<script>
+
+
+function bootPublic() {
+  addStyle(PAGE_CSS);
+  var app = document.getElementById('app');
+  if (BOOT.error) {
+    app.innerHTML = '<div class="pg" style="' + themeVars() + '"><main class="wrap" style="padding-top:60px"><section class="card">' +
+      '<div class="closed"><div class="badge">' + IC.info + '</div>' + esc(BOOT.error) + '</div></section></main></div>';
+    return;
+  }
+  var cfg = BOOT.cfg;
+  app.innerHTML = renderPage(cfg, BOOT.state, {});
+  bindForm(cfg, sendGas);
+}
+
+function sendGas(id, ans) {
+  return new Promise(function (res, rej) {
+    google.script.run.withSuccessHandler(res).withFailureHandler(rej).submitRegistration(id, ans);
+  });
+}
+
+function closeForm(message) {
+  var b = document.getElementById('blk-form');
+  if (b) b.innerHTML = '<h2>Đăng ký tham dự</h2><div class="closed"><div class="badge">' + IC.lock + '</div>' + esc(message) + '</div>';
+}
+
+function bindForm(cfg, send) {
+  var form = document.getElementById('regForm');
+  if (!form) return;
+  form.addEventListener('change', function (e) {
+    var t = e.target;
+    if (t.type === 'radio' || t.type === 'checkbox') {
+      var fld = t.closest('.fld');
+      fld.querySelectorAll('.opt').forEach(function (o) { o.classList.toggle('on', o.querySelector('input').checked); });
+      if (t.value === '__other' && t.checked) { var o = fld.querySelector('.oth'); if (o) o.focus(); }
+      fld.classList.remove('bad');
+    }
+  });
+  form.addEventListener('input', function (e) {
+    form.setAttribute('data-touched', '1');
+    var fld = e.target.closest('.fld');
+    if (fld) fld.classList.remove('bad');
+    if (e.target.classList.contains('oth') && e.target.value) {
+      var r = e.target.parentNode.querySelector('input[value="__other"]');
+      if (r && !r.checked) { r.checked = true; r.dispatchEvent(new Event('change', { bubbles: true })); }
+    }
+  });
+  form.addEventListener('submit', function (e) {
+    e.preventDefault();
+    var res = collect(form);
+    showErrors(form, res.errors);
+    var msg = document.getElementById('fmsg');
+    if (Object.keys(res.errors).length) {
+      msg.textContent = 'Quý Thầy/Cô vui lòng kiểm tra lại các ô được đánh dấu.';
+      msg.classList.add('on');
+      var first = form.querySelector('.fld.bad');
+      if (first) first.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      return;
+    }
+    msg.classList.remove('on');
+    var btn = document.getElementById('btnSubmit');
+    btn.disabled = true;
+    btn.textContent = 'Đang gửi...';
+    send(cfg.id, res.ans).then(function (r) {
+      btn.disabled = false;
+      btn.textContent = 'Gửi đăng ký';
+      r = r || {};
+      if (r.ok) return showDone(cfg, r);
+      if (r.closed) return closeForm(r.msg);
+      if (r.errors) showErrors(form, r.errors);
+      msg.textContent = r.msg || 'Chưa gửi được, Quý Thầy/Cô vui lòng thử lại.';
+      msg.classList.add('on');
+    }, function (err) {
+      btn.disabled = false;
+      btn.textContent = 'Gửi đăng ký';
+      msg.textContent = 'Chưa gửi được do lỗi kết nối. Quý Thầy/Cô vui lòng bấm gửi lại. (' + (err && err.message || err) + ')';
+      msg.classList.add('on');
+    });
+  });
+}
+
+var EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+var PHONE_RE = /^(0|\+84)\d{8,11}$/;
+
+function collect(form) {
+  var ans = {}, errors = {};
+  form.querySelectorAll('.fld').forEach(function (fld) {
+    var key = fld.getAttribute('data-key'), type = fld.getAttribute('data-type'), req = fld.getAttribute('data-req') === '1';
+    var v;
+    if (type === 'radio' || type === 'checkbox') {
+      var vals = [];
+      fld.querySelectorAll('input[type=' + type + ']:checked').forEach(function (i) {
+        if (i.value === '__other') {
+          var o = fld.querySelector('.oth').value.trim();
+          if (o) vals.push(o); else errors[key] = 'Vui lòng ghi rõ nội dung mục Khác.';
+        } else vals.push(i.value);
+      });
+      v = type === 'checkbox' ? vals : (vals[0] || '');
+      if (req && !vals.length && !errors[key]) errors[key] = 'Vui lòng chọn một mục.';
+    } else {
+      v = fld.querySelector('.inp').value.trim();
+      if (req && !v) errors[key] = 'Vui lòng điền thông tin này.';
+      else if (v && type === 'email' && !EMAIL_RE.test(v)) errors[key] = 'Email chưa đúng định dạng.';
+      else if (v && type === 'tel' && !PHONE_RE.test(v.replace(/[\s.\-]/g, ''))) errors[key] = 'Số điện thoại chưa đúng, ví dụ 0909123456.';
+    }
+    ans[key] = v;
+  });
+  return { ans: ans, errors: errors };
+}
+
+function showErrors(form, errors) {
+  form.querySelectorAll('.fld').forEach(function (fld) {
+    var k = fld.getAttribute('data-key');
+    fld.classList.toggle('bad', !!errors[k]);
+    fld.querySelector('.err').textContent = errors[k] || '';
+  });
+}
+
+function showDone(cfg, r) {
+  var b = document.getElementById('blk-form');
+  var extra = cfg.reg && cfg.reg.successMsg ? '<p>' + esc(cfg.reg.successMsg) + '</p>' : '';
+  b.innerHTML = '<h2>Đăng ký tham dự</h2><div class="done"><div class="badge">' + IC.check + '</div>' +
+    '<h3>' + (r.waitlist ? 'Đã ghi nhận vào danh sách dự bị' : 'Đăng ký thành công') + '</h3>' +
+    (r.waitlist ? '<p>Sự kiện đã đủ số lượng chính thức. Ban tổ chức sẽ thông báo nếu có chỗ trống.</p>'
+      : '<div class="stt">Số thứ tự: ' + r.stt + '</div>') +
+    (r.emailSent ? '<p>Email xác nhận đã được gửi đến địa chỉ Quý Thầy/Cô đã khai báo.</p>' : '') + extra +
+    '<p>Trân trọng cảm ơn Quý Thầy/Cô.</p></div>';
+  b.scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+</script>
+
+<script>
+
+
+var SITE = MODE === 'site' ? BOOT : {};
+var SITE_CSS = [
+  '.sec-t{font-size:13px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#6b7280;margin:30px 0 12px}',
+  '.evl{display:grid;gap:14px}',
+  '.evl.first{margin-top:-30px;position:relative;z-index:2}',
+  '.evc{display:flex;gap:18px;align-items:center;background:#fff;border-radius:14px;padding:18px 20px;text-decoration:none;color:inherit;box-shadow:0 1px 2px rgba(16,24,40,.05),0 6px 20px rgba(16,24,40,.06);border-left:5px solid var(--c);transition:transform .15s}',
+  '.evc:hover{transform:translateY(-2px)}',
+  '.evd{width:64px;text-align:center;flex:none;color:var(--c)}',
+  '.evd b{display:block;font-size:30px;line-height:1.05}',
+  '.evd span{font-size:12px;color:#6b7280}',
+  '.evb{flex:1;min-width:0}',
+  '.evb h3{margin:3px 0 4px;font-size:17px;color:#111827;line-height:1.4}',
+  '.tg{font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;color:var(--c)}',
+  '.evm{font-size:13.5px;color:#4b5563}',
+  '.evs{font-size:12.5px;font-weight:600;padding:5px 11px;border-radius:99px;white-space:nowrap}',
+  '.evs.open{background:#dcfce7;color:#166534}',
+  '.evs.closed{background:#f3f4f6;color:#4b5563}',
+  '.ld{text-align:center;padding:90px 20px;color:#6b7280}',
+  '.sp{display:inline-block;width:26px;height:26px;border:3px solid #cbd5e1;border-top-color:#0b3d91;border-radius:50%;animation:spn .8s linear infinite;margin-bottom:12px}',
+  '@keyframes spn{to{transform:rotate(360deg)}}',
+  '@media(max-width:640px){.evc{display:grid;grid-template-columns:52px minmax(0,1fr);gap:8px 14px;align-items:start;padding:16px}.evd{width:auto}.evd b{font-size:24px}.evs{grid-column:2;justify-self:start}.evb h3{font-size:16px}}'
+].join('\n');
+
+function getJson(url, ms) {
+  var ctl = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  var t = setTimeout(function () { if (ctl) ctl.abort(); }, ms || 15000);
+  return fetch(url, ctl ? { signal: ctl.signal } : {}).then(function (r) {
+    clearTimeout(t);
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  }, function (e) { clearTimeout(t); throw e; });
+}
+
+function sendSite(id, ans) {
+  if (!SITE.api) return Promise.reject(new Error('Website chưa được nối với máy chủ đăng ký.'));
+  return fetch(SITE.api, {
+    method: 'POST',
+    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+    body: JSON.stringify({ action: 'submit', id: id, ans: ans })
+  }).then(function (r) {
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    return r.json();
+  });
+}
+
+function siteMsg(html) {
+  document.getElementById('app').innerHTML = '<div class="pg" style="' + themeVars() + '"><main class="wrap" style="padding-top:60px">' +
+    '<section class="card"><div class="closed"><div class="badge">' + IC.info + '</div>' + html +
+    '<p style="margin-top:14px"><a href="./">Xem danh sách sự kiện</a></p></div></section></main></div>';
+}
+
+function siteLoading() {
+  document.getElementById('app').innerHTML = '<div class="ld"><div class="sp"></div><div>Đang tải thông tin sự kiện...</div></div>';
+}
+
+function pendingState(cfg) {
+  var cap = +(cfg.reg && cfg.reg.capacity) || 0;
+  return { open: true, count: 0, remaining: cap, capacity: cap, pending: true };
+}
+
+var SITE_CUR = null;
+function siteShow(cfg, st) {
+  SITE_CUR = cfg;
+  document.title = 'Đăng ký: ' + (cfg.event && cfg.event.title || 'Sự kiện');
+  document.getElementById('app').innerHTML = renderPage(cfg, st || pendingState(cfg), { site: true });
+  bindForm(cfg, sendSite);
+}
+
+function siteApplyState(cfg, st) {
+  var form = document.getElementById('regForm');
+  var touched = form && form.getAttribute('data-touched');
+  if (!touched) return siteShow(cfg, st);
+  if (!st.open) return closeForm(st.message);
+  var s = document.getElementById('seats');
+  if (s && cfg.reg && cfg.reg.capacity) s.innerHTML = seatsInner(+cfg.reg.capacity, st);
+}
+
+function siteLive(id, fallbackMsg) {
+  return getJson(SITE.api + '?api=event&e=' + encodeURIComponent(id), 25000).then(function (r) {
+    if (!r || !r.ok) return siteMsg(esc((r && r.msg) || fallbackMsg));
+    var form = document.getElementById('regForm');
+    if (form && form.getAttribute('data-touched') && SITE_CUR) return siteApplyState(SITE_CUR, r.state);
+    siteShow(r.cfg, r.state);
+  });
+}
+
+function bootSite() {
+  addStyle(PAGE_CSS + '\n' + SITE_CSS);
+  var q = new URLSearchParams(location.search);
+  var id = String(q.get('e') || '').replace(/[^\w\-]/g, '');
+  if (!id) return siteLanding();
+  siteLoading();
+  var stP = SITE.api ? getJson(SITE.api + '?api=state&e=' + encodeURIComponent(id), 20000).catch(function () { return null; }) : Promise.resolve(null);
+  getJson('events/' + id + '.json?t=' + Date.now(), 10000).then(function (cfg) {
+    siteShow(cfg, null);
+    return stP.then(function (r) {
+      if (!r) return;
+      if (!r.ok) return siteMsg(esc(r.msg));
+      if (r.state.ver && cfg.ver && r.state.ver !== cfg.ver) return siteLive(id, 'Không tải được thông tin mới nhất.');
+      siteApplyState(cfg, r.state);
+    });
+  }).catch(function () {
+    if (!SITE.api) return siteMsg('Không tìm thấy sự kiện này.');
+    siteLive(id, 'Không tìm thấy sự kiện này.').catch(function () {
+      siteMsg('Chưa kết nối được máy chủ đăng ký. Quý Thầy/Cô vui lòng tải lại trang sau ít phút.');
+    });
+  });
+}
+
+var THANG = ['Th1', 'Th2', 'Th3', 'Th4', 'Th5', 'Th6', 'Th7', 'Th8', 'Th9', 'Th10', 'Th11', 'Th12'];
+function evCard(e, now) {
+  var m = String(e.date || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  var dl = e.deadline ? new Date(e.deadline + ':00+07:00').getTime() : 0;
+  var past = m ? new Date(e.date + 'T23:59:59+07:00').getTime() < now : false;
+  var open = e.status === 'open' && !past && !(dl && dl < now);
+  var st = past ? 'Đã diễn ra' : open ? 'Đang nhận đăng ký' : 'Đã đóng đăng ký';
+  var t = e.timeStart ? e.timeStart + (e.timeEnd ? ' - ' + e.timeEnd : '') : '';
+  return '<a class="evc" href="?e=' + encodeURIComponent(e.id) + '" style="' + themeVars(e.color) + '">' +
+    '<div class="evd"><b>' + (m ? m[3] : '--') + '</b><span>' + (m ? THANG[+m[2] - 1] + ' ' + m[1] : '') + '</span></div>' +
+    '<div class="evb">' + (e.type ? '<div class="tg">' + esc(e.type) + '</div>' : '') + '<h3>' + esc(e.title) + '</h3>' +
+    '<div class="evm">' + esc([t, e.venue].filter(Boolean).join(' · ')) + '</div></div>' +
+    '<span class="evs ' + (open ? 'open' : 'closed') + '">' + st + '</span></a>';
+}
+
+function siteLanding() {
+  siteLoading();
+  document.title = 'Đăng ký sự kiện - ' + (SITE.name || '');
+  getJson('events/index.json?t=' + Date.now(), 10000).then(function (list) {
+    var now = Date.now();
+    list = list || [];
+    var past = function (e) { return e.date && new Date(e.date + 'T23:59:59+07:00').getTime() < now; };
+    var sap = list.filter(function (e) { return !past(e); }).sort(function (a, b) { return String(a.date).localeCompare(String(b.date)); });
+    var cu = list.filter(past);
+    var h = '<div class="pg tpl-banner" style="' + themeVars() + '"><header class="hero"><div class="wrap"><div class="hero-in">' +
+      '<span class="tag">Đăng ký sự kiện</span><h1>' + esc(SITE.name || 'Sự kiện') + '</h1>' +
+      '<div class="org">Seminar, hội thảo và các hoạt động đang mở đăng ký</div></div></div></header><main class="wrap">';
+    if (!sap.length) h += '<section class="card" style="margin-top:-30px;position:relative;z-index:2"><div class="closed">Hiện chưa có sự kiện nào đang mở đăng ký.</div></section>';
+    else h += '<div class="evl first">' + sap.map(function (e) { return evCard(e, now); }).join('') + '</div>';
+    if (cu.length) h += '<div class="sec-t">Sự kiện đã diễn ra</div><div class="evl">' + cu.slice(0, 12).map(function (e) { return evCard(e, now); }).join('') + '</div>';
+    h += '</main><footer class="ft"><b>' + esc(SITE.name || '') + '</b></footer></div>';
+    document.getElementById('app').innerHTML = h;
+  }).catch(function () { siteMsg('Chưa tải được danh sách sự kiện. Quý Thầy/Cô vui lòng tải lại trang.'); });
+}
+</script>
+
+
+<script>
+
+
+var ABBR = [
+  [/\bP\.\s?ĐN\b/g, 'Phòng Đối ngoại'], [/\bP\.\s?KHCN\b/g, 'Phòng Khoa học Công nghệ'],
+  [/\bP\.\s?ĐT\b/g, 'Phòng Đào tạo'], [/\bP\.\s?SĐH\b/g, 'Phòng Sau đại học'],
+  [/\bP\.\s?TCHC\b/g, 'Phòng Tổ chức - Hành chính'], [/\bP\.\s?CTSV\b/g, 'Phòng Công tác Sinh viên'],
+  [/\bP\.\s?KHTC\b/g, 'Phòng Kế hoạch - Tài chính'], [/\bP\.\s?QTTB\b/g, 'Phòng Quản trị Thiết bị'],
+  [/\bHT\s+(?=[A-Z]\d)/g, 'Hội trường '], [/\bCBVC\b/g, 'cán bộ, viên chức'], [/\bNCV\b/g, 'nghiên cứu viên'],
+  [/\bNCS\b/g, 'nghiên cứu sinh'], [/\bGV\b/g, 'giảng viên'], [/\bHV\b/g, 'học viên'], [/\bSV\b/g, 'sinh viên'],
+  [/\bCB\b/g, 'cán bộ'], [/\bĐHQG-HCM\b/g, 'ĐHQG-HCM']
+];
+function expand(s) {
+  s = String(s || '');
+  ABBR.forEach(function (a) { s = s.replace(a[0], a[1]); });
+  return s;
+}
+function cap(s) { s = String(s || '').trim(); return s.charAt(0).toUpperCase() + s.slice(1); }
+function slug(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/đ/g, 'd')
+    .replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 30) || 'truong';
+}
+function pad2(n) { return ('0' + n).slice(-2); }
+function findDate(s) {
+  var m = s.match(/(\d{1,2})\s*[\/.\-]\s*(\d{1,2})\s*[\/.\-]\s*(\d{4})/);
+  if (!m) m = s.match(/ngày\s*(\d{1,2})\s*tháng\s*(\d{1,2})\s*năm\s*(\d{4})/i);
+  if (!m) return '';
+  var d = +m[1], mo = +m[2];
+  if (d < 1 || d > 31 || mo < 1 || mo > 12) return '';
+  return m[3] + '-' + pad2(mo) + '-' + pad2(d);
+}
+function findTime(s) {
+  var m = s.match(/(\d{1,2})\s*(?::|h|g|giờ)\s*(\d{2})?(?!\d)/i);
+  if (!m || +m[1] > 23) return '';
+  return pad2(+m[1]) + ':' + (m[2] || '00');
+}
+function reflow(s) {
+  var out = [], cur = '';
+  String(s).split('\n').map(function (l) { return l.trim(); }).forEach(function (l) {
+    if (!l) { if (cur) { out.push(cur); cur = ''; } return; }
+    if (!cur) cur = l;
+    else if (/[.!?:"')]$/.test(cur)) { out.push(cur); cur = l; }
+    else cur += ' ' + l;
+  });
+  if (cur) out.push(cur);
+  return out.join('\n\n');
+}
+function stripQuotes(s) { return String(s || '').trim().replace(/^["']+|["']+$/g, '').trim(); }
+
+var ORG_KW = 'Department|Faculty|School|College|Institute|University|Center|Centre|Laboratory|Lab|Company|Corporation|Ministry|Academy';
+var ORG_KW_VI = 'Khoa|Bộ môn|Trường|Viện|Trung tâm|Phòng|Công ty|Tập đoàn|Đại học|Học viện|Sở|Bộ';
+function splitNameAff(s) {
+  s = String(s || '').replace(/\s+/g, ' ').trim();
+  var reEn = new RegExp('^(.{3,}?)[,;\\s]+((?:[A-Z][a-z][\\w&\'-]*\\s+){0,5}(?:' + ORG_KW + ')\\b.*)$');
+  var m = s.match(reEn);
+  if (m && !m[1].replace(/\b(prof|assoc|dr|mr|ms|mrs|gs|pgs|ts|ths|ks|tskh|ncs)\b\.?/gi, '').replace(/[.,\s]/g, '')) m = null;
+  if (!m) {
+    var reComma = new RegExp('^(.{3,}?)\\s*[,;]\\s*((?:' + ORG_KW_VI + '|National)\\b.*)$');
+    m = s.match(reComma);
+  }
+  if (!m) m = s.match(/^(.{3,}?)\s*[-–]\s+(.+)$/);
+  return m ? [m[1].replace(/[,;\s]+$/, '').trim(), m[2].trim()] : [s, ''];
+}
+var TITLE_RE = /^(prof|assoc|dr|mr|ms|mrs|gs|pgs|ts|ths|ks|tskh|ncs)\b\.?/i;
+
+function mapField(raw) {
+  var s = String(raw || '').replace(/\s+/g, ' ').replace(/\s+\)/g, ')').replace(/\(\s+/g, '(').trim().replace(/[.;,:]+$/, '');
+  var low = s.toLowerCase();
+  var paren = (s.match(/\(([^)]*)\)/) || [])[1] || '';
+  var base = s.replace(/\s*\([^)]*\)\s*/g, ' ').trim();
+  var f = { key: '', label: cap(s), type: 'text', required: true, unique: false, options: [], other: false, help: '', placeholder: '' };
+  var opts = function (def) {
+    var o = paren ? paren.split(/[,\/;]| hoặc /).map(function (x) { return cap(expand(x.trim())); }).filter(Boolean) : [];
+    return o.length >= 2 ? o : def;
+  };
+  if (/mã\s*(số)?\s*(cán bộ|cb|viên chức|học viên|hv|ncs|sinh viên|sv|nhân viên|giảng viên)|mscb|mssv|mã số/.test(low)) {
+    f.key = 'ma_so'; f.unique = true;
+  } else if (/e-?mail|thư điện tử/.test(low)) {
+    f.key = 'email'; f.label = 'Email'; f.type = 'email'; f.unique = true; f.placeholder = 'ten@hcmut.edu.vn';
+  } else if (/họ\s*(và)?\s*tên|full\s*name/.test(low)) {
+    f.key = 'ho_ten'; f.label = 'Họ và tên';
+  } else if (/khoa|đơn vị|bộ môn|cơ quan/.test(low)) {
+    f.key = 'don_vi'; f.label = /khoa\s*\/\s*đơn vị/.test(low) ? 'Khoa/Đơn vị' : cap(base);
+  } else if (/vị trí|chức danh nghề nghiệp|đối tượng/.test(low)) {
+    f.key = 'vi_tri'; f.label = cap(base); f.type = 'radio'; f.other = true;
+    f.options = opts(['Giảng viên', 'Nghiên cứu viên']);
+  } else if (/học vị|trình độ/.test(low)) {
+    f.key = 'hoc_vi'; f.label = cap(base); f.type = 'radio'; f.other = true;
+    f.options = opts(['Cử nhân/Kỹ sư', 'Thạc sĩ', 'Tiến sĩ']);
+  } else if (/học hàm/.test(low)) {
+    f.key = 'hoc_ham'; f.label = cap(base); f.type = 'radio'; f.options = opts(['Không', 'Phó Giáo sư', 'Giáo sư']);
+  } else if (/điện thoại|sđt|sdt|di động|phone|zalo/.test(low)) {
+    f.key = 'sdt'; f.label = /zalo/.test(low) ? cap(base) : 'Số điện thoại'; f.type = 'tel'; f.placeholder = '0909123456';
+  } else if (/giới tính/.test(low)) {
+    f.key = 'gioi_tinh'; f.label = 'Giới tính'; f.type = 'radio'; f.options = ['Nam', 'Nữ'];
+  } else if (/ngày sinh/.test(low)) {
+    f.key = 'ngay_sinh'; f.label = 'Ngày sinh'; f.type = 'date';
+  } else if (/ghi chú|câu hỏi|ý kiến|đề xuất|góp ý|mong muốn/.test(low)) {
+    f.key = 'f_' + slug(base); f.label = cap(base); f.type = 'textarea'; f.required = false;
+  } else {
+    f.key = 'f_' + slug(base);
+  }
+  return f;
+}
+function uniqKeys(fields) {
+  var seen = {};
+  fields.forEach(function (f) {
+    var k = f.key || 'f_' + slug(f.label), b = k, i = 2;
+    while (seen[k]) k = b + '_' + (i++);
+    seen[k] = 1; f.key = k;
+  });
+  return fields;
+}
+function cutSentence(s) {
+  for (var i = 0; i < s.length - 2; i++) {
+    if (s[i] === '.' && s[i + 1] === ' ') {
+      var ch = s[i + 2];
+      if (ch !== ch.toLowerCase() && ch === ch.toUpperCase()) return s.slice(0, i);
+    }
+  }
+  return s;
+}
+function splitList(s) {
+  s = s.trim().replace(/[.]+$/, '');
+  if (s.indexOf(';') >= 0) return s.split(';');
+  var out = [], cur = '', depth = 0;
+  for (var i = 0; i < s.length; i++) {
+    var c = s[i];
+    if (c === '(') depth++;
+    if (c === ')') depth = Math.max(0, depth - 1);
+    if (c === ',' && !depth) { out.push(cur); cur = ''; } else cur += c;
+  }
+  out.push(cur);
+  return out;
+}
+
+var EVTYPE = 'seminar|hội thảo|workshop|tọa đàm|toạ đàm|hội nghị|tập huấn|webinar|lớp bồi dưỡng|khóa tập huấn|talkshow|diễn đàn|buổi nói chuyện|sinh hoạt chuyên đề|báo cáo chuyên đề';
+
+function parseRequest(text) {
+  var T = String(text || '').replace(/\r/g, '').replace(/ /g, ' ').replace(/\*/g, '')
+    .replace(/[“”„]/g, '"').replace(/[‘’]/g, "'");
+  var lines = T.split('\n');
+  var r = { speakers: [], fields: [] };
+  var isDl = function (l) { return /(deadline|hạn chót|hạn đăng ký|thời hạn|đăng ký trước|hạn cuối)/i.test(l); };
+
+  
+  var m = T.match(new RegExp('(' + EVTYPE + ')\\s*(?:khoa học|quốc tế|chuyên đề)?\\s*(?:về|với chủ đề|chủ đề|:)?\\s*"([^"]{4,300})"', 'i'));
+  if (m) { r.type = cap(m[1]); r.title = m[2].replace(/\s+/g, ' ').trim(); }
+  else {
+    m = T.match(/"([^"]{6,300})"/);
+    if (m) r.title = m[1].replace(/\s+/g, ' ').trim();
+    var t2 = T.match(new RegExp('\\b(' + EVTYPE + ')\\b', 'i'));
+    if (t2) r.type = cap(t2[1]);
+  }
+  if (r.type && /^seminar|^workshop|^webinar|^talkshow/i.test(r.type)) r.type = r.type.charAt(0).toUpperCase() + r.type.slice(1).toLowerCase();
+
+  
+  for (var i = 0; i < lines.length; i++) {
+    var om = lines[i].match(/^\s*(.{2,160}?)\s+(?:sẽ\s+)?(?:đồng\s+)?tổ chức\s/i);
+    if (om && !/^(em|anh|chị|bạn|nhờ|đề nghị|kính)\b/i.test(om[1].trim()) && !/^\d+\)/.test(om[1].trim())) {
+      r.organizer = cap(expand(om[1].replace(/^(dear|kính gửi|chào)[^,]*,\s*/i, '')));
+      break;
+    }
+  }
+  var orgL = T.match(/(?:đơn vị tổ chức|ban tổ chức|tổ chức bởi)\s*:\s*([^\n]+)/i);
+  if (orgL) r.organizer = cap(expand(orgL[1].trim()));
+
+  
+  m = T.match(/"\s*(?:dành\s+)?cho\s+([^.\n"]{2,140})/i) || T.match(/(?:đối tượng(?: tham dự)?)\s*:\s*([^\n]+)/i);
+  if (m) r.audience = cap(expand(m[1].trim().replace(/[.;]$/, '')).replace(/\s*\/\s*/g, ', '));
+
+  
+  var evLines = lines.filter(function (l) { return !isDl(l); });
+  var pri = evLines.filter(function (l) { return /(ngày tổ chức|thời gian|ngày diễn ra|date|time)/i.test(l); });
+  [pri, evLines].some(function (arr) {
+    for (var j = 0; j < arr.length; j++) { var d = findDate(arr[j]); if (d) { r.date = d; return true; } }
+    return false;
+  });
+  for (var k = 0; k < evLines.length; k++) {
+    var tm = evLines[k].match(/(\d{1,2})\s*(?::|h|g)\s*(\d{2})?\s*(?:-|–|—|đến|tới|to)\s*(\d{1,2})\s*(?::|h|g)?\s*(\d{2})?/i);
+    if (tm && +tm[1] < 24 && +tm[3] < 24) {
+      r.timeStart = pad2(+tm[1]) + ':' + (tm[2] || '00');
+      r.timeEnd = pad2(+tm[3]) + ':' + (tm[4] || '00');
+      break;
+    }
+  }
+  if (!r.timeStart) {
+    var one = evLines.filter(function (l) { return /(thời gian|lúc|bắt đầu)/i.test(l); }).map(findTime).filter(Boolean)[0];
+    if (one) r.timeStart = one;
+  }
+
+  
+  var dlLines = lines.filter(isDl);
+  for (var q = 0; q < dlLines.length; q++) {
+    var dd = findDate(dlLines[q]);
+    if (dd) { r.deadline = dd + 'T' + (findTime(dlLines[q].replace(/\d{1,2}\s*[\/.\-]\s*\d{1,2}\s*[\/.\-]\s*\d{4}/, '')) || '23:59'); break; }
+  }
+
+  
+  m = T.match(/(?:không quá|tối đa|giới hạn|chỉ nhận|số lượng[^\d\n]{0,28})\s*(\d{1,4})\s*(?:chỗ|người|đại biểu|khách|suất|thành viên|học viên)?/i) ||
+    T.match(/(\d{1,4})\s*(?:chỗ|suất)\b/i);
+  if (m) r.capacity = +m[1];
+
+  
+  m = T.match(/(?:địa điểm|venue|location)\s*:\s*([^\n]+)/i);
+  var ven = m ? m[1] : '';
+  if (!ven) { m = T.match(/\b((?:HT|hội trường|phòng)\s+[A-Z]\d[\w.\-]*)/i); if (m) ven = m[1]; }
+  if (ven) {
+    if (/(to be confirmed|tbc|tbd|dự kiến|chờ xác nhận|chưa xác nhận)/i.test(ven)) r.venueUnconfirmed = true;
+    r.venue = cap(expand(ven.replace(/\((?:[^)]*?)(to be confirmed|tbc|tbd|dự kiến|chờ xác nhận|chưa xác nhận)[^)]*\)/ig, '')
+      .replace(/(to be confirmed|tbc|tbd)/ig, '').trim().replace(/[.;,]$/, '')));
+  }
+
+  
+  var sIdx = T.search(/(?:người trình bày|diễn giả|báo cáo viên|chuyên gia trình bày|speakers?|presenters?)\s*:/i);
+  if (sIdx >= 0) {
+    var rest = T.slice(sIdx).replace(/^[^:]*:\s*/, '');
+    var stop = rest.search(/\n\s*(?:\n|[ivx]+\)|\d+[.)]|chủ đề|tên bài|tiêu đề|title|topic|thời gian|địa điểm|abstract|tóm tắt|số lượng|hạn|deadline|form|from|biểu mẫu|phiếu|giao diện|liên hệ|đối tượng|ghi chú|lưu ý)/i);
+    var blk = (stop >= 0 ? rest.slice(0, stop) : rest.split(/\n\s*\n/)[0]).trim();
+    var sp = [], prevLen = 0;
+    blk.split('\n').map(function (x) { return x.trim(); }).filter(Boolean).forEach(function (l) {
+      if (!sp.length || TITLE_RE.test(l)) {
+        var na = splitNameAff(l);
+        sp.push({ name: na[0], affiliation: na[1] });
+      } else {
+        var cur = sp[sp.length - 1];
+        if (!cur.affiliation) {
+          var na2 = splitNameAff(cur.name + ' ' + l);
+          if (na2[1] && na2[0].length >= cur.name.length - 1) { cur.name = na2[0]; cur.affiliation = na2[1]; }
+          else cur.affiliation = l;
+        } else {
+          cur.affiliation += (prevLen > 55 && !/[,;.]$/.test(cur.affiliation) ? ' ' : ', ') + l;
+        }
+      }
+      prevLen = l.length;
+    });
+    r.speakers = sp;
+  }
+
+  
+  m = T.match(/(?:chủ đề|tên bài(?: tham luận| báo cáo| trình bày)?|tiêu đề|title|topic|đề tài)\s*:\s*(?:"([^"]{4,400})"|([^\n]{4,300}))/i);
+  if (m) {
+    if (!r.speakers.length) r.speakers.push({ name: '', affiliation: '' });
+    r.speakers[0].talkTitle = stripQuotes((m[1] || m[2]).replace(/\s+/g, ' '));
+  }
+
+  
+  var aIdx = T.search(/(?:abstract|tóm tắt(?: bài)?(?: tham luận| báo cáo)?|nội dung tóm tắt|summary)\s*:/i);
+  if (aIdx >= 0) {
+    var ab = T.slice(aIdx).replace(/^[^:]*:\s*/, '');
+    var end = ab.search(/\n\s*(?:bests?|best regards|regards|thanks|trân trọng|cảm ơn|thân ái|--)\b/i);
+    if (end >= 0) ab = ab.slice(0, end);
+    ab = reflow(stripQuotes(ab.trim()));
+    if (ab) {
+      if (!r.speakers.length) r.speakers.push({ name: '', affiliation: '' });
+      r.speakers[0].abstract = ab;
+    }
+  }
+
+  
+  m = T.match(/(?:form|from|biểu mẫu|phiếu(?: đăng ký)?|gg form|google form)[^\n:]{0,40}?(?:trường|thông tin|mục|nội dung)[^\n:]{0,20}:\s*([\s\S]*?)(?:\n\s*\n|\n[^\n]*(?:deadline|hạn chót|hạn đăng ký|thời hạn|thông tin seminar|thông tin sự kiện)|$)/i);
+  if (m) {
+    r.fields = uniqKeys(splitList(cutSentence(m[1].replace(/\s+/g, ' '))).map(function (x) { return x.trim(); }).filter(function (x) { return x.length > 1; }).map(mapField));
+  }
+
+  
+  if (/hai cột|2 cột/i.test(T)) r.layout = 'twocol';
+  else if (/poster|áp phích|nổi bật diễn giả/i.test(T)) r.layout = 'poster';
+  else if (/tối giản|giống google form|kiểu google form/i.test(T)) r.layout = 'minimal';
+  else if (/\bbanner\b/i.test(T)) r.layout = 'banner';
+  var cm = T.match(/(?:màu|tông)\s+(xanh dương|xanh lá|xanh ngọc|xanh lam|đỏ đô|đỏ|cam|tím|xám|xanh)/i);
+  if (cm) r.color = { 'xanh dương': '#0b3d91', 'xanh lam': '#1d6fd8', 'xanh lá': '#15803d', 'xanh ngọc': '#0f766e', 'đỏ đô': '#9f1239', 'đỏ': '#b91c1c', 'cam': '#c2410c', 'tím': '#5b21b6', 'xám': '#334155', 'xanh': '#0b3d91' }[cm[1].toLowerCase()];
+  return r;
+}
+
+function normalizeAI(j) {
+  j = j || {};
+  var r = {
+    type: j.type || '', title: stripQuotes(j.title), organizer: j.organizer || '', audience: j.audience || '',
+    date: /^\d{4}-\d{2}-\d{2}$/.test(j.date || '') ? j.date : '', timeStart: j.timeStart || '', timeEnd: j.timeEnd || '',
+    venue: j.venue || '', venueUnconfirmed: !!j.venueUnconfirmed, capacity: +j.capacity || 0,
+    layout: j.layout || '', color: /^#[0-9a-f]{6}$/i.test(j.color || '') ? j.color : '', note: j.note || ''
+  };
+  if (/^\d{4}-\d{2}-\d{2}$/.test(j.deadlineDate || '')) r.deadline = j.deadlineDate + 'T' + (/^\d{2}:\d{2}$/.test(j.deadlineTime || '') ? j.deadlineTime : '23:59');
+  r.speakers = (j.speakers || []).map(function (s) {
+    return { name: s.name || '', affiliation: s.affiliation || '', talkTitle: stripQuotes(s.talkTitle), abstract: s.abstract || '' };
+  });
+  r.fields = uniqKeys((j.fields || []).filter(function (f) { return f && f.label; }).map(function (f) {
+    var g = mapField(f.label);
+    if (f.label) g.label = cap(f.label);
+    if (/^(text|email|tel|number|date|textarea|radio|select|checkbox)$/.test(f.type)) g.type = f.type;
+    if (f.options && f.options.length) g.options = f.options.map(String);
+    if (typeof f.required === 'boolean') g.required = f.required;
+    if (typeof f.unique === 'boolean') g.unique = f.unique;
+    if (typeof f.other === 'boolean') g.other = f.other;
+    return g;
+  }));
+  return r;
+}
+</script>
+
+<script>
+
+
+var ADMIN_CSS = [
+  '*{box-sizing:border-box}',
+  'body.adm{margin:0;font-family:"Be Vietnam Pro",system-ui,"Segoe UI",Roboto,Arial,sans-serif;font-size:14px;color:#1f2937;background:#f3f5f9;height:100vh;overflow:hidden}',
+  '.top{height:54px;display:flex;align-items:center;gap:10px;padding:0 16px;background:#0b3d91;color:#fff}',
+  '.top .ttl{font-weight:700;font-size:15.5px;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}',
+  '.top .b{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.25)}',
+  '.top .b:hover{background:rgba(255,255,255,.22)}',
+  '.mainx{display:flex;height:calc(100vh - 54px - 58px)}',
+  '.mainx.home{height:calc(100vh - 54px)}',
+  '.steps{width:206px;flex:none;background:#fff;border-right:1px solid #e5e7eb;padding:14px 10px;overflow:auto}',
+  '.step{display:flex;gap:10px;align-items:center;padding:10px 11px;border-radius:10px;cursor:pointer;color:#374151;margin-bottom:2px;user-select:none}',
+  '.step:hover{background:#f3f5f9}',
+  '.step .num{width:26px;height:26px;border-radius:50%;background:#eef2f7;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px;flex:none}',
+  '.step.on{background:#e8effb;color:#0b3d91;font-weight:600}',
+  '.step.on .num{background:#0b3d91;color:#fff}',
+  '.steps .meta{margin-top:16px;padding:12px;border-radius:10px;background:#f8fafc;font-size:12.5px;color:#6b7280;line-height:1.5}',
+  '.ed{flex:1;min-width:0;overflow:auto;padding:22px 26px 40px}',
+  '.pvw{width:46%;min-width:440px;flex:none;border-left:1px solid #e5e7eb;background:#e6eaf0;display:flex;flex-direction:column}',
+  '.pvbar{display:flex;align-items:center;gap:8px;padding:9px 12px;background:#fff;border-bottom:1px solid #e5e7eb}',
+  '.pvbar .lbx{flex:1;font-weight:600;color:#374151}',
+  '.seg{display:inline-flex;border:1px solid #d1d5db;border-radius:9px;overflow:hidden}',
+  '.seg button{border:0;background:#fff;padding:6px 12px;font:inherit;font-size:13px;cursor:pointer;color:#374151}',
+  '.seg button.on{background:#0b3d91;color:#fff}',
+  '.pvbox{flex:1;position:relative;overflow:hidden}',
+  '.pvbox iframe{border:0;background:#fff;position:absolute;top:0;left:0;transform-origin:0 0}',
+  '.pvbox.mob iframe{border-radius:22px;box-shadow:0 10px 30px rgba(15,23,42,.25);top:14px}',
+  '.foot{height:58px;display:flex;align-items:center;gap:8px;padding:0 16px;background:#fff;border-top:1px solid #e5e7eb}',
+  '.foot .msg{flex:1;color:#6b7280;font-size:13px}',
+  '.foot .msg.dirty{color:#b45309}',
+  '.b{display:inline-flex;align-items:center;gap:6px;padding:8px 15px;border-radius:9px;border:1px solid #d1d5db;background:#fff;font:inherit;font-weight:600;font-size:13.5px;cursor:pointer;color:#1f2937;white-space:nowrap;text-decoration:none}',
+  '.b:hover{background:#f3f4f6}',
+  '.b.p{background:#0b3d91;color:#fff;border-color:#0b3d91}',
+  '.b.p:hover{background:#082f70}',
+  '.b.g{background:#15803d;color:#fff;border-color:#15803d}',
+  '.b.g:hover{background:#166534}',
+  '.b.d{color:#b91c1c}',
+  '.b.sm{padding:5px 10px;font-size:12.5px;border-radius:8px}',
+  '.b[disabled]{opacity:.55;cursor:wait}',
+  'h3.h{font-size:19px;margin:0 0 4px;color:#111827}',
+  '.sub{color:#6b7280;margin:0 0 18px;line-height:1.55}',
+  '.fg{margin-bottom:14px}',
+  '.fg>label,.lab{display:block;font-weight:600;margin-bottom:5px;color:#374151}',
+  '.hint{font-size:12.5px;color:#6b7280;margin-top:4px}',
+  '.in{width:100%;padding:9px 11px;border:1px solid #d1d5db;border-radius:8px;font:inherit;background:#fff;color:#111827}',
+  '.in:focus{outline:0;border-color:#0b3d91;box-shadow:0 0 0 3px #dbe6fb}',
+  'textarea.in{resize:vertical;line-height:1.5}',
+  '.r2{display:grid;grid-template-columns:1fr 1fr;gap:12px}',
+  '.r3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}',
+  '.box{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;margin-bottom:14px}',
+  '.box h4{margin:0 0 12px;font-size:14.5px;display:flex;align-items:center;gap:8px}',
+  '.alert{padding:12px 14px;border-radius:10px;margin-bottom:14px;line-height:1.55}',
+  '.alert.w{background:#fff7ed;border:1px solid #fed7aa;color:#9a3412}',
+  '.alert.i{background:#eff6ff;border:1px solid #bfdbfe;color:#1e3a8a}',
+  '.alert.s{background:#f0fdf4;border:1px solid #bbf7d0;color:#166534}',
+  '.alert.e{background:#fef2f2;border:1px solid #fecaca;color:#991b1b;white-space:pre-line}',
+  '.alert ol{margin:6px 0 0 18px;padding:0}',
+  '.ck{display:flex;align-items:center;gap:8px;cursor:pointer;user-select:none}',
+  '.ck input{width:16px;height:16px;accent-color:#0b3d91;margin:0}',
+  '.btns{display:flex;flex-wrap:wrap;gap:8px;margin-top:12px}',
+  'table.tb{width:100%;border-collapse:collapse;background:#fff;border:1px solid #e5e7eb;border-radius:12px;overflow:hidden}',
+  '.tb th{text-align:left;font-size:12.5px;color:#6b7280;font-weight:600;padding:10px 12px;background:#f8fafc;border-bottom:1px solid #e5e7eb}',
+  '.tb td{padding:12px;border-bottom:1px solid #f1f3f6;vertical-align:top}',
+  '.tb tr:last-child td{border-bottom:0}',
+  '.tb .tn{font-weight:600;color:#111827;margin-bottom:3px}',
+  '.pill{display:inline-block;padding:3px 10px;border-radius:99px;font-size:12px;font-weight:600}',
+  '.pill.draft{background:#f3f4f6;color:#4b5563}.pill.open{background:#dcfce7;color:#166534}.pill.closed{background:#fee2e2;color:#991b1b}',
+  '.prog{height:6px;background:#eef0f4;border-radius:9px;overflow:hidden;margin-top:6px;width:120px}',
+  '.prog i{display:block;height:100%;background:#0b3d91}',
+  '.acts{display:flex;flex-wrap:wrap;gap:6px}',
+  '.res td{padding:7px 10px;border-bottom:1px solid #f1f3f6;vertical-align:top}',
+  '.res td:first-child{width:170px;color:#6b7280}',
+  '.miss{color:#b45309;font-style:italic}',
+  '.spbox{display:grid;grid-template-columns:120px 1fr;gap:16px}',
+  '.phb{text-align:center}',
+  '.phb .pv{width:110px;height:110px;border-radius:50%;object-fit:cover;background:#eef2f7;display:flex;align-items:center;justify-content:center;color:#94a3b8;font-weight:700;font-size:28px;margin:0 auto 8px;border:1px solid #e5e7eb}',
+  '.file{position:relative;overflow:hidden;display:inline-flex}',
+  '.file input{position:absolute;inset:0;opacity:0;cursor:pointer}',
+  '.frow{background:#fff;border:1px solid #e5e7eb;border-radius:12px;padding:12px 14px;margin-bottom:10px}',
+  '.frow .l1{display:grid;grid-template-columns:28px minmax(0,1fr) 170px;gap:10px;align-items:center}',
+  '.frow .no{width:26px;height:26px;border-radius:50%;background:#eef2f7;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:12px}',
+  '.frow .l2{display:flex;flex-wrap:wrap;gap:16px;margin:10px 0 0 38px;align-items:center}',
+  '.frow .l2 .mini{margin-left:auto}',
+  '.frow .l3{margin:10px 0 0 38px;display:grid;grid-template-columns:1fr 1fr;gap:10px}',
+  '.mini{display:flex;gap:4px}',
+  '.chipsx{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}',
+  '.thumbs{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-bottom:16px}',
+  '.thumb{border:2px solid #e5e7eb;border-radius:12px;overflow:hidden;cursor:pointer;background:#fff;transition:border-color .15s}',
+  '.thumb:hover{border-color:#9db4e6}',
+  '.thumb.on{border-color:#0b3d91;box-shadow:0 0 0 3px #c9d8f5}',
+  '.tf{height:190px;overflow:hidden;position:relative;pointer-events:none;background:#f3f5f9}',
+  '.tf iframe{width:1200px;height:1400px;border:0;transform-origin:0 0;position:absolute;top:0;left:0}',
+  '.thumb .nm{padding:9px 12px;border-top:1px solid #eef0f4}',
+  '.thumb .nm b{display:block}',
+  '.thumb .nm span{font-size:12px;color:#6b7280}',
+  '.sw{display:flex;flex-wrap:wrap;gap:10px;align-items:center}',
+  '.swatch{width:30px;height:30px;border-radius:50%;cursor:pointer;border:3px solid #fff;box-shadow:0 0 0 1px #d1d5db}',
+  '.swatch.on{box-shadow:0 0 0 2px #111827}',
+  '.blk{display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:8px;background:#fff}',
+  '.blk .nm{flex:1;font-weight:600}',
+  '.linkbox{display:flex;gap:8px;align-items:center}',
+  '.linkbox input{flex:1;font-family:monospace;font-size:13px}',
+  '.qr{display:flex;gap:16px;align-items:center;margin-top:14px}',
+  '.qr img{width:150px;height:150px;border:1px solid #e5e7eb;border-radius:8px;background:#fff}',
+  '.empty{text-align:center;padding:50px 20px;color:#6b7280;background:#fff;border:1px dashed #d1d5db;border-radius:14px}',
+  '.toast{position:fixed;bottom:74px;left:50%;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 18px;border-radius:10px;z-index:99;display:none;max-width:70%;text-align:center}',
+  '.mbg{position:fixed;inset:0;background:rgba(15,23,42,.4);display:flex;align-items:center;justify-content:center;z-index:60}',
+  '.modal{background:#fff;border-radius:14px;padding:22px 24px;width:600px;max-width:92vw;max-height:88vh;overflow:auto}',
+  '.modal.wide{width:820px}',
+  '.st-ok,.st-bad,.st-off{display:inline-block;padding:2px 9px;border-radius:99px;font-size:12px;font-weight:600;margin-right:6px}',
+  '.st-ok{background:#dcfce7;color:#166534}.st-bad{background:#fee2e2;color:#991b1b}.st-off{background:#f3f4f6;color:#4b5563}',
+  '.ghrow{display:flex;gap:10px;align-items:flex-start;padding:8px 0;border-bottom:1px solid #f1f3f6}',
+  '.ghrow:last-child{border-bottom:0}',
+  '.ghrow .k2{width:150px;flex:none;color:#6b7280}',
+  '.modal h3{margin:0 0 14px}',
+  '.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:sp .7s linear infinite}',
+  '@keyframes sp{to{transform:rotate(360deg)}}',
+  '.cnt{float:right;font-weight:400;color:#9ca3af;font-size:12px}'
+].join('\n');
+
+var STEPS = ['Phân tích yêu cầu', 'Thông tin sự kiện', 'Diễn giả & tham luận', 'Trường đăng ký', 'Giao diện', 'Cài đặt & xuất bản'];
+var STEP_SCROLL = { 1: 'top', 2: 'blk-event', 3: 'blk-speaker', 4: 'blk-form', 5: 'top', 6: 'blk-form' };
+var TEMPLATES = [
+  { id: 'banner', name: 'Banner nổi bật', desc: 'Dải màu lớn ở đầu trang, các khối xếp dọc' },
+  { id: 'twocol', name: 'Hai cột', desc: 'Thông tin bên trái, form đăng ký cố định bên phải' },
+  { id: 'poster', name: 'Poster diễn giả', desc: 'Ảnh diễn giả lớn ở trung tâm, hợp với seminar' },
+  { id: 'minimal', name: 'Tối giản', desc: 'Gọn nhẹ, gần với kiểu Google Form quen thuộc' }
+];
+var COLORS = [['#0b3d91', 'Xanh Bách khoa'], ['#1d6fd8', 'Xanh lam'], ['#0f766e', 'Xanh ngọc'], ['#15803d', 'Xanh lá'],
+  ['#9f1239', 'Đỏ đô'], ['#c2410c', 'Cam'], ['#5b21b6', 'Tím'], ['#334155', 'Than chì']];
+var FTYPES = [['text', 'Văn bản ngắn'], ['textarea', 'Đoạn văn'], ['email', 'Email'], ['tel', 'Số điện thoại'], ['number', 'Số'],
+  ['date', 'Ngày'], ['radio', 'Chọn một'], ['select', 'Danh sách thả xuống'], ['checkbox', 'Chọn nhiều']];
+var PRESETS = ['Mã số cán bộ (hoặc mã học viên, mã NCS)', 'Email', 'Họ và tên', 'Khoa/Đơn vị', 'Vị trí công tác',
+  'Học vị', 'Học hàm', 'Số điện thoại', 'Chức vụ', 'Câu hỏi gửi diễn giả'];
+var EVTYPES = ['Seminar', 'Hội thảo', 'Workshop', 'Tọa đàm', 'Hội nghị', 'Tập huấn', 'Webinar', 'Diễn đàn'];
+
+var S = { view: 'home', step: 1, cfg: null, events: [], settings: {}, dirty: false, device: 'desktop', ana: null, savedAt: '' };
+
+function call(name) {
+  var args = [].slice.call(arguments, 1);
+  return new Promise(function (res, rej) {
+    var r = google.script.run.withSuccessHandler(res).withFailureHandler(function (e) { rej(e && e.message ? e.message : String(e)); });
+    r[name].apply(r, args);
+  });
+}
+function $(s, el) { return (el || document).querySelector(s); }
+function $$(s, el) { return [].slice.call((el || document).querySelectorAll(s)); }
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function toast(t, ms) {
+  var el = $('#toast');
+  el.textContent = t;
+  el.style.display = 'block';
+  clearTimeout(toast._t);
+  toast._t = setTimeout(function () { el.style.display = 'none'; }, ms || 2600);
+}
+function getPath(o, p) { return p.split('.').reduce(function (a, k) { return a == null ? a : a[k]; }, o); }
+function setPath(o, p, v) {
+  var ks = p.split('.');
+  var last = ks.pop();
+  var t = ks.reduce(function (a, k) { return a[k]; }, o);
+  t[last] = v;
+}
+
+function newSpeaker() { return { name: '', affiliation: '', talkTitle: '', abstract: '', photo: '', photoId: '' }; }
+function defaultFields() { return uniqKeys(PRESETS.slice(0, 6).concat([PRESETS[7]]).map(mapField)); }
+function newCfg() {
+  return {
+    id: '', status: 'draft', sheetName: '', request: '',
+    event: { type: 'Seminar', title: '', organizer: 'Phòng Đối ngoại', audience: '', date: '', timeStart: '', timeEnd: '', venue: '', note: '', contact: '' },
+    speakers: [newSpeaker()],
+    fields: defaultFields(),
+    reg: { capacity: 60, deadline: '', waitlist: false, confirmEmail: true, successMsg: '' },
+    layout: { template: 'banner', color: '#0b3d91', blocks: clone(DEFAULT_BLOCKS), logo: '', logoId: '' }
+  };
+}
+
+ 
+function bootAdmin() {
+  addStyle(ADMIN_CSS);
+  document.body.className = 'adm';
+  document.getElementById('app').innerHTML =
+    '<div class="top"><div class="ttl" id="ttl">Phần mềm tạo trang đăng ký sự kiện</div>' +
+    '<button class="b sm" data-act="home">Danh sách sự kiện</button><button class="b sm" data-act="new">+ Tạo sự kiện mới</button>' +
+    '<button class="b sm" data-act="web">Website &amp; sao lưu</button><button class="b sm" data-act="settings">Cài đặt</button></div>' +
+    '<div class="mainx home" id="mainx"><nav class="steps" id="steps" style="display:none"></nav><section class="ed" id="ed"></section>' +
+    '<section class="pvw" id="pvw" style="display:none"><div class="pvbar"><span class="lbx">Xem trước</span><div class="seg" id="devSeg">' +
+    '<button data-act="device" data-v="desktop" class="on">Máy tính</button><button data-act="device" data-v="mobile">Điện thoại</button></div></div>' +
+    '<div class="pvbox" id="pvbox"><iframe id="pvf" title="Xem trước"></iframe></div></section></div>' +
+    '<div class="foot" id="foot" style="display:none"><div class="msg" id="fmsgx"></div>' +
+    '<button class="b" data-act="prev">Trước</button><button class="b" data-act="next">Tiếp</button>' +
+    '<button class="b" data-act="save">Lưu nháp</button><button class="b g" data-act="publish" id="btnPub">Xuất bản</button></div>' +
+    '<div class="toast" id="toast"></div><div id="mroot"></div>';
+  document.addEventListener('click', onClick);
+  $('#ed').addEventListener('input', onInput);
+  $('#ed').addEventListener('change', onChange);
+  window.addEventListener('resize', fitPreview);
+  $('#pvf').addEventListener('load', onPvLoad);
+  $('#ed').innerHTML = '<div class="empty"><span class="spin"></span> Đang tải dữ liệu...</div>';
+  Promise.all([call('api_getSettings'), call('api_listEvents')]).then(function (a) {
+    S.settings = a[0]; S.events = a[1];
+    renderHome();
+  }).catch(function (e) { $('#ed').innerHTML = '<div class="alert e">Không tải được dữ liệu: ' + esc(e) + '</div>'; });
+}
+
+function setView(v) {
+  S.view = v;
+  var ed = v === 'edit';
+  $('#mainx').classList.toggle('home', !ed);
+  $('#steps').style.display = ed ? '' : 'none';
+  $('#pvw').style.display = ed ? '' : 'none';
+  $('#foot').style.display = ed ? '' : 'none';
+}
+
+ 
+function renderHome() {
+  setView('home');
+  $('#ttl').textContent = 'Phần mềm tạo trang đăng ký sự kiện';
+  var st = S.settings;
+  var h = '<div style="max-width:1180px;margin:0 auto"><div style="display:flex;align-items:flex-end;gap:12px;margin-bottom:16px">' +
+    '<div style="flex:1"><h3 class="h">Danh sách sự kiện</h3><p class="sub" style="margin:0">Mỗi sự kiện có một trang đăng ký riêng và một sheet danh sách người đăng ký trong file này.</p></div>' +
+    '<button class="b p" data-act="new">+ Tạo sự kiện mới</button></div>';
+  if (st.webAppUrl && !st.siteUrl) {
+    h += '<div class="alert i">Trang đăng ký đang chạy trên link Apps Script. Muốn đưa lên website GitHub Pages và sao lưu dữ liệu lên GitHub, anh bấm <a href="#" data-act="web">Website &amp; sao lưu</a>.</div>';
+  }
+  if (st.siteUrl) {
+    h += '<div class="alert s">Website: <a target="_blank" href="' + esc(st.siteUrl) + '">' + esc(st.siteUrl) + '</a>' +
+      (st.gh && st.gh.backupAt ? ' · Sao lưu gần nhất: ' + esc(st.gh.backupAt) + ' (' + esc(st.gh.backupMsg) + ')' : '') + '</div>';
+  }
+  if (!st.webAppUrl) {
+    h += '<div class="alert w"><b>Chưa có link công khai.</b> Anh vẫn soạn và xem trước được, nhưng muốn gửi link cho người tham dự thì cần triển khai ứng dụng web một lần. ' +
+      '<a href="#" data-act="settings">Mở Cài đặt</a> để xem hướng dẫn và dán link.</div>';
+  }
+  if (!S.events.length) {
+    h += '<div class="empty"><div style="font-size:16px;font-weight:600;color:#374151;margin-bottom:6px">Chưa có sự kiện nào</div>' +
+      'Bấm <b>Tạo sự kiện mới</b>, dán nội dung email giao việc, phần mềm sẽ tự phân tích và điền sẵn.<div class="btns" style="justify-content:center">' +
+      '<button class="b p" data-act="new">+ Tạo sự kiện mới</button></div></div>';
+  } else {
+    h += '<table class="tb"><thead><tr><th>Sự kiện</th><th style="width:120px">Ngày tổ chức</th><th style="width:150px">Đăng ký</th>' +
+      '<th style="width:130px">Trạng thái</th><th style="width:330px">Thao tác</th></tr></thead><tbody>' +
+      S.events.map(function (e) {
+        var pct = e.capacity ? Math.min(100, Math.round(e.count * 100 / e.capacity)) : 0;
+        return '<tr><td><div class="tn">' + esc(e.title) + '</div><div class="hint">' + esc(e.type) + ' · Mã ' + esc(e.id) +
+          (e.updated ? ' · Cập nhật ' + esc(e.updated) : '') + '</div></td>' +
+          '<td>' + esc(e.date ? e.date.split('-').reverse().join('/') : '') + '</td>' +
+          '<td><b>' + e.count + '</b>/' + (e.capacity || '-') + (e.wait ? ' <span class="hint">(+' + e.wait + ' dự bị)</span>' : '') +
+          '<div class="prog"><i style="width:' + pct + '%"></i></div></td>' +
+          '<td><span class="pill ' + e.status + '">' + ({ draft: 'Nháp', open: 'Đang mở', closed: 'Đã đóng' }[e.status] || e.status) + '</span>' +
+          (e.deadline ? '<div class="hint">Hạn: ' + esc(deadlineText(e.deadline).replace(/\s\(.*\)/, '')) + '</div>' : '') + '</td>' +
+          '<td><div class="acts"><button class="b sm p" data-act="edit" data-id="' + e.id + '">Sửa</button>' +
+          (e.link ? '<button class="b sm" data-act="copyLink" data-v="' + esc(e.link) + '">Sao chép link</button><a class="b sm" target="_blank" href="' + esc(e.link) + '">Mở trang</a>' : '') +
+          (e.sheetUrl ? '<a class="b sm" target="_blank" href="' + esc(e.sheetUrl) + '">Danh sách</a>' : '') +
+          (e.status === 'open' ? '<button class="b sm" data-act="status" data-id="' + e.id + '" data-v="closed">Đóng đăng ký</button>' : '') +
+          (e.status === 'closed' ? '<button class="b sm" data-act="status" data-id="' + e.id + '" data-v="open">Mở lại</button>' : '') +
+          '<button class="b sm" data-act="dup" data-id="' + e.id + '">Nhân bản</button>' +
+          '<button class="b sm d" data-act="del" data-id="' + e.id + '" data-v="' + esc(e.title) + '">Xóa</button></div></td></tr>';
+      }).join('') + '</tbody></table>';
+  }
+  h += '</div>';
+  $('#ed').innerHTML = h;
+}
+
+ 
+function openEditor(cfg, step) {
+  S.cfg = cfg;
+  if (!cfg.layout.blocks || !cfg.layout.blocks.length) cfg.layout.blocks = clone(DEFAULT_BLOCKS);
+  if (!cfg.speakers || !cfg.speakers.length) cfg.speakers = [newSpeaker()];
+  S.dirty = false; S.ana = null; S.savedAt = '';
+  setView('edit');
+  goStep(step || (cfg.id ? 2 : 1));
+  setFoot();
+  refreshPreview(true);
+}
+
+function renderSteps() {
+  var c = S.cfg;
+  $('#steps').innerHTML = STEPS.map(function (t, i) {
+    return '<div class="step' + (S.step === i + 1 ? ' on' : '') + '" data-act="go" data-v="' + (i + 1) + '"><span class="num">' + (i + 1) + '</span>' + t + '</div>';
+  }).join('') + '<div class="meta">' + (c.id ? 'Mã sự kiện: <b>' + esc(c.id) + '</b><br>Trạng thái: <b>' +
+    ({ draft: 'Nháp', open: 'Đang mở', closed: 'Đã đóng' }[c.status] || '') + '</b>' : 'Sự kiện mới, chưa lưu.') + '</div>';
+}
+
+function goStep(n) {
+  S.step = Math.max(1, Math.min(6, n));
+  renderSteps();
+  renderStep();
+  $('#ed').scrollTop = 0;
+  S.scrollTo = STEP_SCROLL[S.step] || '';
+  scrollPreview();
+  $('#ttl').textContent = (S.cfg.event.title || 'Sự kiện mới') + ' · ' + STEPS[S.step - 1];
+}
+
+function inp(path, label, o) {
+  o = o || {};
+  var v = getPath(S.cfg, path);
+  v = v == null ? '' : v;
+  var a = ' class="in" data-p="' + path + '"' + (o.num ? ' data-num="1"' : '') + (o.ph ? ' placeholder="' + esc(o.ph) + '"' : '') + (o.list ? ' list="' + o.list + '"' : '');
+  var el = o.rows ? '<textarea' + a + ' rows="' + o.rows + '">' + esc(v) + '</textarea>'
+    : '<input' + a + ' type="' + (o.type || 'text') + '" value="' + esc(v) + '"' + (o.min != null ? ' min="' + o.min + '"' : '') + '>';
+  return '<div class="fg"><label>' + label + (o.req ? ' <span style="color:#dc2626">*</span>' : '') + (o.count ? '<span class="cnt" data-cnt="' + path + '">' + String(v).length + ' ký tự</span>' : '') +
+    '</label>' + el + (o.hint ? '<div class="hint">' + o.hint + '</div>' : '') + '</div>';
+}
+function ck(path, label) {
+  return '<label class="ck"><input type="checkbox" data-p="' + path + '"' + (getPath(S.cfg, path) ? ' checked' : '') + '>' + label + '</label>';
+}
+
+function renderStep() {
+  var c = S.cfg, h = '';
+  if (S.step === 1) {
+    h = '<h3 class="h">Phân tích yêu cầu</h3><p class="sub">Dán nguyên văn email hoặc văn bản giao việc vào ô dưới. Phần mềm tự nhận diện tên sự kiện, thời gian, địa điểm, đơn vị tổ chức, diễn giả, ' +
+      'bài tham luận, số chỗ, hạn đăng ký và các trường thông tin cần thu thập, sau đó điền sẵn vào các bước tiếp theo để anh kiểm tra lại.</p>' +
+      '<textarea class="in" id="reqTxt" data-p="request" rows="15" placeholder="Ví dụ:\nP.ĐN phối hợp với P.KHCN tổ chức Seminar về &quot;...&quot; cho GV/NCV trẻ.\n- Ngày tổ chức: chiều thứ 2, ngày 07/12/2026\n- Thời gian: 14:00 - 16:00\nForm cần các trường sau: mã số cán bộ; email; Họ và Tên; ...\nDeadline: trước 17:00 ngày 03/12/2026\nNgười trình bày: ...\nChủ đề: &quot;...&quot;\nAbstract: ...">' + esc(c.request || '') + '</textarea>' +
+      '<div class="btns"><button class="b p" data-act="parse">Phân tích và điền tự động</button>' +
+      (S.settings.hasGemini ? '<button class="b" data-act="ai" id="btnAI">Phân tích nâng cao (Gemini)</button>' : '') +
+      '<button class="b" data-act="go" data-v="2">Bỏ qua, tự nhập</button></div>' +
+      (S.settings.hasGemini ? '' : '<div class="hint" style="margin-top:8px">Muốn phân tích các văn bản viết tự do hơn, anh có thể gắn khóa Gemini trong Cài đặt (không bắt buộc).</div>') +
+      '<div id="anaRes" style="margin-top:18px">' + anaHtml() + '</div>';
+  } else if (S.step === 2) {
+    h = '<h3 class="h">Thông tin sự kiện</h3><p class="sub">Các ô có dấu (*) là bắt buộc. Thay đổi hiện ngay ở khung xem trước bên phải.</p>' +
+      '<div class="r2">' + inp('event.type', 'Loại sự kiện', { list: 'evtypes' }) + inp('event.organizer', 'Đơn vị tổ chức') + '</div>' +
+      '<datalist id="evtypes">' + EVTYPES.map(function (t) { return '<option value="' + t + '">'; }).join('') + '</datalist>' +
+      inp('event.title', 'Tên sự kiện', { rows: 2, req: 1 }) +
+      inp('event.audience', 'Đối tượng tham dự', { ph: 'Giảng viên, nghiên cứu viên trẻ' }) +
+      '<div class="r3">' + inp('event.date', 'Ngày tổ chức', { type: 'date', req: 1 }) + inp('event.timeStart', 'Giờ bắt đầu', { type: 'time' }) + inp('event.timeEnd', 'Giờ kết thúc', { type: 'time' }) + '</div>' +
+      inp('event.venue', 'Địa điểm', { ph: 'Hội trường B4, cơ sở Lý Thường Kiệt' }) +
+      inp('event.note', 'Ghi chú cho người tham dự', { rows: 3, hint: 'Ví dụ: ngôn ngữ trình bày, yêu cầu mang theo, chỗ gửi xe. Để trống nếu không cần.' }) +
+      inp('event.contact', 'Thông tin liên hệ (hiện ở cuối trang)', { ph: 'Phòng Đối ngoại, email ..., điện thoại ...' });
+  } else if (S.step === 3) {
+    h = '<h3 class="h">Diễn giả và bài tham luận</h3><p class="sub">Ảnh diễn giả nên là ảnh chân dung, phần mềm tự thu nhỏ trước khi lưu vào Google Drive của anh.</p>' +
+      c.speakers.map(function (sp, i) {
+        return '<div class="box"><h4>Diễn giả ' + (i + 1) + '<span style="flex:1"></span>' +
+          (c.speakers.length > 1 ? '<button class="b sm" data-act="spUp" data-i="' + i + '">Lên</button><button class="b sm d" data-act="spDel" data-i="' + i + '">Xóa diễn giả</button>' : '') +
+          '</h4><div class="spbox"><div class="phb">' + (sp.photo ? '<img class="pv" src="' + esc(sp.photo) + '">' : '<div class="pv">' + esc(initials(sp.name)) + '</div>') +
+          '<span class="b sm file">Chọn ảnh<input type="file" accept="image/*" data-photo="' + i + '"></span>' +
+          (sp.photo ? '<div style="margin-top:6px"><button class="b sm d" data-act="rmPhoto" data-i="' + i + '">Xóa ảnh</button></div>' : '') + '</div><div>' +
+          inp('speakers.' + i + '.name', 'Học hàm, học vị, họ tên', { ph: 'Prof. ...' }) + inp('speakers.' + i + '.affiliation', 'Đơn vị công tác', { rows: 2 }) +
+          inp('speakers.' + i + '.talkTitle', 'Tên bài tham luận', { rows: 2 }) +
+          inp('speakers.' + i + '.abstract', 'Tóm tắt bài tham luận', { rows: 9, count: 1, hint: 'Mỗi đoạn cách nhau một dòng.' }) +
+          '</div></div></div>';
+      }).join('') + '<button class="b" data-act="spAdd">+ Thêm diễn giả</button>';
+  } else if (S.step === 4) {
+    var have = {};
+    c.fields.forEach(function (f) { have[f.label.toLowerCase()] = 1; have[f.key] = 1; });
+    var miss = PRESETS.filter(function (p) { var m = mapField(p); return !have[m.key] && !have[m.label.toLowerCase()]; });
+    h = '<h3 class="h">Trường thông tin đăng ký</h3><p class="sub">Đây là các ô người tham dự phải điền. Mỗi trường sẽ thành một cột trong sheet danh sách. ' +
+      'Đánh dấu "Không trùng" để chặn một người đăng ký hai lần (thường dùng cho Email và Mã số cán bộ).</p>' +
+      (miss.length ? '<div class="lab">Thêm nhanh</div><div class="chipsx">' + miss.map(function (p) {
+        return '<button class="b sm" data-act="fAddPreset" data-v="' + esc(p) + '">+ ' + esc(mapField(p).label.replace(/\s*\(.*\)/, '')) + '</button>';
+      }).join('') + '<button class="b sm p" data-act="fAdd">+ Trường tự tạo</button></div>' : '<div class="chipsx"><button class="b sm p" data-act="fAdd">+ Trường tự tạo</button></div>') +
+      c.fields.map(function (f, i) {
+        var choice = f.type === 'radio' || f.type === 'select' || f.type === 'checkbox';
+        return '<div class="frow"><div class="l1"><span class="no">' + (i + 1) + '</span>' +
+          '<input class="in" data-p="fields.' + i + '.label" value="' + esc(f.label) + '" placeholder="Tên trường">' +
+          '<select class="in" data-p="fields.' + i + '.type" data-rerender="1">' + FTYPES.map(function (t) {
+            return '<option value="' + t[0] + '"' + (f.type === t[0] ? ' selected' : '') + '>' + t[1] + '</option>';
+          }).join('') + '</select></div>' +
+          '<div class="l2">' + ck('fields.' + i + '.required', 'Bắt buộc') + ck('fields.' + i + '.unique', 'Không trùng') +
+          (choice && f.type !== 'select' ? ck('fields.' + i + '.other', 'Có mục "Khác"') : '') +
+          '<div class="mini"><button class="b sm" data-act="fUp" data-i="' + i + '" title="Lên">&#8593;</button>' +
+          '<button class="b sm" data-act="fDown" data-i="' + i + '" title="Xuống">&#8595;</button><button class="b sm d" data-act="fDel" data-i="' + i + '">Xóa</button></div></div>' +
+          '<div class="l3">' + (choice ? '<div><div class="lab" style="font-size:12.5px">Các lựa chọn (mỗi dòng một mục)</div><textarea class="in" rows="3" data-opts="' + i + '">' + esc((f.options || []).join('\n')) + '</textarea></div>'
+            : '<div><div class="lab" style="font-size:12.5px">Gợi ý trong ô</div><input class="in" data-p="fields.' + i + '.placeholder" value="' + esc(f.placeholder || '') + '"></div>') +
+          '<div><div class="lab" style="font-size:12.5px">Hướng dẫn ngắn dưới tên trường</div><input class="in" data-p="fields.' + i + '.help" value="' + esc(f.help || '') + '"></div></div></div>';
+      }).join('');
+  } else if (S.step === 5) {
+    var L = c.layout;
+    h = '<h3 class="h">Giao diện trang đăng ký</h3><p class="sub">Bấm vào một mẫu để chọn. Ảnh thu nhỏ dùng đúng nội dung anh đã nhập.</p>' +
+      '<div class="thumbs">' + TEMPLATES.map(function (t) {
+        return '<div class="thumb' + (L.template === t.id ? ' on' : '') + '" data-act="tpl" data-v="' + t.id + '"><div class="tf"><iframe data-thumb="' + t.id + '" tabindex="-1"></iframe></div>' +
+          '<div class="nm"><b>' + t.name + '</b><span>' + t.desc + '</span></div></div>';
+      }).join('') + '</div>' +
+      '<div class="box"><h4>Màu chủ đạo</h4><div class="sw">' + COLORS.map(function (x) {
+        return '<span class="swatch' + (L.color.toLowerCase() === x[0] ? ' on' : '') + '" style="background:' + x[0] + '" title="' + x[1] + '" data-act="color" data-v="' + x[0] + '"></span>';
+      }).join('') + '<label class="ck" style="margin-left:8px">Màu khác <input type="color" data-p="layout.color" value="' + esc(L.color) + '" style="width:40px;height:30px;padding:0;border:0"></label></div></div>' +
+      '<div class="box"><h4>Thứ tự và các khối hiển thị</h4>' + L.blocks.map(function (b, i) {
+        var lock = b.id === 'form';
+        var note = L.template === 'poster' && b.id === 'speaker' ? ' <span class="hint">(mẫu Poster đã đưa ảnh diễn giả lên đầu trang)</span>' : '';
+        return '<div class="blk"><span class="nm">' + BLOCK_NAMES[b.id] + note + '</span>' +
+          (lock ? '<span class="hint">Luôn hiển thị</span>' : '<label class="ck"><input type="checkbox" data-p="layout.blocks.' + i + '.show"' + (b.show ? ' checked' : '') + '>Hiển thị</label>') +
+          '<button class="b sm" data-act="bUp" data-i="' + i + '">&#8593;</button><button class="b sm" data-act="bDown" data-i="' + i + '">&#8595;</button></div>';
+      }).join('') + (L.template === 'twocol' ? '<div class="hint">Ở mẫu Hai cột, form đăng ký luôn nằm ở cột phải; thứ tự trên áp dụng cho cột trái.</div>' : '') + '</div>' +
+      '<div class="box"><h4>Logo đơn vị (không bắt buộc)</h4><div style="display:flex;gap:12px;align-items:center">' +
+      (L.logo ? '<img src="' + esc(L.logo) + '" style="max-height:50px;max-width:200px;border:1px solid #e5e7eb;border-radius:6px;padding:4px">' : '<span class="hint">Chưa có logo</span>') +
+      '<span class="b sm file">Chọn ảnh logo<input type="file" accept="image/*" data-logo="1"></span>' +
+      (L.logo ? '<button class="b sm d" data-act="rmLogo">Xóa logo</button>' : '') + '</div></div>';
+  } else if (S.step === 6) {
+    h = '<h3 class="h">Cài đặt đăng ký và xuất bản</h3><p class="sub">Kiểm tra lại số chỗ, hạn đăng ký rồi bấm Xuất bản để có link gửi cán bộ.</p>' +
+      '<div class="box"><h4>Giới hạn đăng ký</h4><div class="r2">' + inp('reg.capacity', 'Số chỗ tối đa', { type: 'number', num: 1, min: 1 }) +
+      inp('reg.deadline', 'Hạn đăng ký (giờ Việt Nam)', { type: 'datetime-local', hint: 'Đến giờ này trang tự khóa, không nhận thêm.' }) + '</div>' +
+      '<div style="display:grid;gap:10px">' + ck('reg.waitlist', 'Khi đủ chỗ vẫn nhận đăng ký vào danh sách dự bị') +
+      ck('reg.confirmEmail', 'Tự động gửi email xác nhận cho người đăng ký') + '</div></div>' +
+      '<div class="box"><h4>Lời nhắn sau khi đăng ký thành công (không bắt buộc)</h4>' +
+      '<textarea class="in" rows="2" data-p="reg.successMsg" placeholder="Ví dụ: Ban tổ chức sẽ gửi tài liệu trước buổi seminar.">' + esc(c.reg.successMsg || '') + '</textarea></div>' +
+      '<div id="pubBox">' + pubHtml() + '</div>';
+  }
+  $('#ed').innerHTML = h;
+  if (S.step === 5) renderThumbs();
+}
+
+function anaHtml() {
+  var a = S.ana;
+  if (!a) return '';
+  var r = a.r, c = S.cfg;
+  var row = function (k, v) { return '<tr><td>' + k + '</td><td>' + (v ? esc(v) : '<span class="miss">Chưa nhận diện được, anh nhập tay ở bước sau</span>') + '</td></tr>'; };
+  var sp = (r.speakers || []).map(function (s) { return [s.name, s.affiliation].filter(Boolean).join(', '); }).filter(Boolean).join('; ');
+  var tl = (r.timeStart ? r.timeStart + (r.timeEnd ? ' - ' + r.timeEnd : '') + ', ' : '') + (r.date ? fmtDate(r.date) : '');
+  var warn = [];
+  if (r.venueUnconfirmed) warn.push('Địa điểm trong văn bản đang ghi là chưa xác nhận. Khi có phòng chính thức, anh sửa lại ở bước 2 rồi bấm Cập nhật trang.');
+  if (r.date && r.deadline && r.deadline.slice(0, 10) > r.date) warn.push('Hạn đăng ký đang sau ngày tổ chức, anh kiểm tra lại.');
+  if (r.date) {
+    var raw = (c.request || '').toLowerCase();
+    var dm = raw.match(/thứ\s*([2-7]|hai|ba|tư|năm|sáu|bảy)[^\n]{0,25}?ngày\s*\d{1,2}\s*\/\s*\d{1,2}/);
+    if (dm) {
+      var map = { '2': 1, hai: 1, '3': 2, ba: 2, '4': 3, 'tư': 3, '5': 4, 'năm': 4, '6': 5, 'sáu': 5, '7': 6, 'bảy': 6 };
+      var p = r.date.split('-');
+      if (map[dm[1]] !== new Date(+p[0], +p[1] - 1, +p[2]).getDay()) warn.push('Thứ ghi trong văn bản không khớp với ngày ' + p.reverse().join('/') + ', anh kiểm tra lại.');
+    }
+  }
+  return '<div class="alert s"><b>' + (a.ai ? 'Gemini' : 'Phần mềm') + ' đã phân tích và điền sẵn thông tin.</b> Anh kiểm tra bảng dưới, chỗ nào thiếu thì bổ sung ở các bước tiếp theo.</div>' +
+    (warn.length ? '<div class="alert w">' + warn.map(esc).join('<br>') + '</div>' : '') +
+    '<table class="tb res"><tbody>' + row('Loại sự kiện', r.type) + row('Tên sự kiện', r.title) + row('Đơn vị tổ chức', r.organizer) +
+    row('Đối tượng', r.audience) + row('Thời gian', tl) + row('Địa điểm', r.venue) +
+    row('Số chỗ tối đa', r.capacity ? r.capacity + ' chỗ' : '') + row('Hạn đăng ký', r.deadline ? deadlineText(r.deadline) : '') +
+    row('Diễn giả', sp) + row('Tên bài tham luận', (r.speakers || []).map(function (s) { return s.talkTitle; }).filter(Boolean).join('; ')) +
+    row('Tóm tắt', (r.speakers || []).some(function (s) { return s.abstract; }) ? 'Đã lấy ' + (r.speakers || []).map(function (s) { return (s.abstract || '').length; }).reduce(function (x, y) { return x + y; }, 0) + ' ký tự' : '') +
+    row('Trường đăng ký', (r.fields || []).map(function (f) { return f.label; }).join('; ')) + '</tbody></table>' +
+    '<div class="btns"><button class="b p" data-act="go" data-v="2">Tiếp tục kiểm tra thông tin</button></div>';
+}
+
+function applyParsed(r, ai) {
+  var c = S.cfg, ev = c.event;
+  ['type', 'title', 'organizer', 'audience', 'date', 'timeStart', 'timeEnd', 'venue', 'note'].forEach(function (k) { if (r[k]) ev[k] = r[k]; });
+  if (r.capacity) c.reg.capacity = r.capacity;
+  if (r.deadline) c.reg.deadline = r.deadline;
+  if (r.speakers && r.speakers.length) {
+    c.speakers = r.speakers.map(function (s, i) {
+      var old = c.speakers[i] || newSpeaker();
+      return { name: s.name || old.name, affiliation: s.affiliation || old.affiliation, talkTitle: s.talkTitle || old.talkTitle,
+        abstract: s.abstract || old.abstract, photo: old.photo, photoId: old.photoId, photoChanged: old.photoChanged };
+    });
+  }
+  if (r.fields && r.fields.length) c.fields = r.fields;
+  if (r.layout) c.layout.template = r.layout;
+  if (r.color) c.layout.color = r.color;
+  S.ana = { r: r, ai: ai };
+  markDirty();
+  refreshPreview();
+}
+
+function pubHtml() {
+  var c = S.cfg, st = S.settings;
+  var base = st.siteUrl || st.webAppUrl;
+  var link = c.id && c.status !== 'draft' && base ? base + '?e=' + c.id : '';
+  var h = '';
+  var issues = checkCfg(true);
+  if (issues.length) h += '<div class="alert w"><b>Cần bổ sung trước khi xuất bản:</b><ol>' + issues.map(function (x) { return '<li>' + esc(x) + '</li>'; }).join('') + '</ol></div>';
+  if (!st.webAppUrl) {
+    h += '<div class="alert i"><b>Bước một lần: tạo link công khai.</b><ol>' +
+      '<li>Trong cửa sổ Apps Script, bấm nút xanh <b>Triển khai</b> &gt; <b>Tùy chọn triển khai mới</b>.</li>' +
+      '<li>Bấm bánh răng cạnh "Chọn loại", chọn <b>Ứng dụng web</b>.</li>' +
+      '<li>Thực thi với tư cách: <b>Tôi</b>. Người có quyền truy cập: <b>Bất kỳ ai</b>. Bấm <b>Triển khai</b>.</li>' +
+      '<li>Sao chép link kết thúc bằng <b>/exec</b> và dán vào ô dưới.</li></ol>' +
+      '<div class="linkbox" style="margin-top:10px"><input class="in" id="wa" placeholder="https://script.google.com/macros/s/.../exec">' +
+      '<button class="b p" data-act="saveWa">Lưu link</button></div></div>';
+  }
+  if (c.status === 'open' && link) {
+    h += '<div class="box" style="border-color:#bbf7d0"><h4 style="color:#166534">Trang đăng ký đang mở</h4>' +
+      '<div class="linkbox"><input class="in" id="pubLink" readonly value="' + esc(link) + '"><button class="b p" data-act="copyLink" data-v="' + esc(link) + '">Sao chép</button>' +
+      '<a class="b" target="_blank" href="' + esc(link) + '">Mở trang</a></div>' +
+      '<div class="qr"><img alt="Mã QR" src="https://api.qrserver.com/v1/create-qr-code/?size=300x300&margin=8&data=' + encodeURIComponent(link) + '">' +
+      '<div class="hint">Mã QR dẫn tới trang đăng ký, dùng để chèn vào slide hoặc thư mời. Bấm chuột phải vào ảnh, chọn Lưu hình ảnh.<br><br>' +
+      'Sau khi sửa nội dung, anh bấm <b>Cập nhật trang</b>; link giữ nguyên.' +
+      (st.siteUrl ? ' Website GitHub cần khoảng 1 đến 2 phút để hiện nội dung mới.' : '') + '<br><br>' +
+      '<button class="b sm" data-act="status" data-id="' + c.id + '" data-v="closed">Đóng đăng ký ngay</button></div></div></div>';
+  } else if (c.status === 'closed') {
+    h += '<div class="alert w">Trang đăng ký đang đóng. <button class="b sm" data-act="status" data-id="' + c.id + '" data-v="open">Mở lại đăng ký</button></div>';
+  } else {
+    h += '<div class="alert i">Sự kiện đang ở dạng nháp. Bấm <b>Xuất bản</b> ở góc dưới bên phải để tạo trang đăng ký và sheet danh sách.</div>';
+  }
+  return h;
+}
+
+function checkCfg(pub) {
+  var c = S.cfg, e = [];
+  if (!String(c.event.title || '').trim()) e.push('Nhập tên sự kiện (bước 2).');
+  if (pub && !c.event.date) e.push('Chọn ngày tổ chức (bước 2).');
+  if (!c.fields.length) e.push('Thêm ít nhất một trường đăng ký (bước 4).');
+  var seen = {};
+  c.fields.forEach(function (f, i) {
+    var l = String(f.label || '').trim().toLowerCase();
+    if (!l) e.push('Trường số ' + (i + 1) + ' chưa có tên (bước 4).');
+    else if (seen[l]) e.push('Tên trường "' + f.label + '" bị lặp (bước 4).');
+    seen[l] = 1;
+    if (/radio|select|checkbox/.test(f.type) && !(f.options || []).length) e.push('Trường "' + f.label + '" chưa có lựa chọn nào (bước 4).');
+  });
+  if (pub) {
+    if (!(+c.reg.capacity > 0)) e.push('Nhập số chỗ tối đa (bước 6).');
+    if (!c.reg.deadline) e.push('Đặt hạn đăng ký (bước 6).');
+    if (c.reg.confirmEmail && !c.fields.some(function (f) { return f.type === 'email'; })) e.push('Đã bật gửi email xác nhận nhưng chưa có trường kiểu Email (bước 4).');
+  }
+  return e;
+}
+
+ 
+function fakeState(c) { var cap = +c.reg.capacity || 0; return { open: true, count: 0, remaining: cap, capacity: cap }; }
+function buildDoc(cfg) {
+  return '<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">' +
+    '<link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">' +
+    '<style>' + PAGE_CSS + '</style></head><body>' + renderPage(cfg, fakeState(cfg), { preview: true }) + '</body></html>';
+}
+var pvTimer;
+function refreshPreview(now) {
+  clearTimeout(pvTimer);
+  pvTimer = setTimeout(function () {
+    var f = $('#pvf');
+    try { S.keepScroll = f.contentWindow ? f.contentWindow.scrollY : 0; } catch (e) { S.keepScroll = 0; }
+    f.srcdoc = buildDoc(S.cfg);
+    fitPreview();
+    if (S.step === 5) renderThumbs();
+  }, now ? 0 : 300);
+}
+function onPvLoad() {
+  var f = $('#pvf');
+  try {
+    var w = f.contentWindow;
+    if (S.scrollTo === 'top') { w.scrollTo(0, 0); S.scrollTo = ''; }
+    else if (S.scrollTo) {
+      var el = w.document.getElementById(S.scrollTo);
+      if (el) w.scrollTo(0, Math.max(0, el.getBoundingClientRect().top + w.scrollY - 12));
+      S.scrollTo = '';
+    } else if (S.keepScroll) w.scrollTo(0, S.keepScroll);
+  } catch (e) {   }
+}
+function scrollPreview() {
+  var f = $('#pvf');
+  try {
+    var w = f.contentWindow;
+    if (S.scrollTo === 'top') { w.scrollTo({ top: 0, behavior: 'smooth' }); S.scrollTo = ''; return; }
+    var el = S.scrollTo && w.document.getElementById(S.scrollTo);
+    if (el) { w.scrollTo({ top: Math.max(0, el.getBoundingClientRect().top + w.scrollY - 12), behavior: 'smooth' }); S.scrollTo = ''; }
+  } catch (e) {   }
+}
+function fitPreview() {
+  var box = $('#pvbox'), f = $('#pvf');
+  if (!box || box.offsetParent === null) return;
+  var W = box.clientWidth, H = box.clientHeight;
+  box.classList.toggle('mob', S.device === 'mobile');
+  if (S.device === 'mobile') {
+    var mw = 390, mh = Math.min(844, H - 28), s = 1;
+    if (W < mw + 20) s = (W - 20) / mw;
+    f.style.width = mw + 'px'; f.style.height = mh / s + 'px';
+    f.style.transform = 'scale(' + s + ')';
+    f.style.left = Math.max(10, (W - mw * s) / 2) + 'px';
+  } else {
+    var dw = 1240, sc = W / dw;
+    f.style.width = dw + 'px'; f.style.height = H / sc + 'px';
+    f.style.transform = 'scale(' + sc + ')';
+    f.style.left = '0px';
+  }
+}
+var thTimer;
+function renderThumbs() {
+  clearTimeout(thTimer);
+  thTimer = setTimeout(function () {
+    $$('iframe[data-thumb]').forEach(function (fr) {
+      var c = clone(S.cfg);
+      c.layout.template = fr.getAttribute('data-thumb');
+      fr.srcdoc = buildDoc(c);
+      var w = fr.parentNode.clientWidth || 300;
+      fr.style.transform = 'scale(' + (w / 1200) + ')';
+    });
+  }, 120);
+}
+
+ 
+function markDirty() { S.dirty = true; setFoot(); }
+function setFoot() {
+  var m = $('#fmsgx');
+  if (!m) return;
+  m.className = 'msg' + (S.dirty ? ' dirty' : '');
+  m.textContent = S.dirty ? 'Có thay đổi chưa lưu' : (S.savedAt ? 'Đã lưu lúc ' + S.savedAt : (S.cfg && S.cfg.id ? 'Không có thay đổi' : 'Sự kiện mới, chưa lưu'));
+  var pb = $('#btnPub');
+  if (pb && S.cfg) pb.textContent = S.cfg.status === 'open' ? 'Cập nhật trang' : 'Xuất bản';
+  $('[data-act=prev]').disabled = S.step <= 1;
+  $('[data-act=next]').disabled = S.step >= 6;
+}
+
+function onInput(e) {
+  var t = e.target, p = t.getAttribute('data-p');
+  if (t.hasAttribute('data-opts')) {
+    S.cfg.fields[+t.getAttribute('data-opts')].options = t.value.split('\n').map(function (x) { return x.trim(); }).filter(Boolean);
+    markDirty(); refreshPreview(); return;
+  }
+  if (!p || t.type === 'checkbox' || t.tagName === 'SELECT') return;
+  var v = t.value;
+  if (t.hasAttribute('data-num')) v = v === '' ? '' : Number(v);
+  setPath(S.cfg, p, v);
+  var cn = $('[data-cnt="' + p + '"]');
+  if (cn) cn.textContent = String(v).length + ' ký tự';
+  if (p === 'event.title') $('#ttl').textContent = (v || 'Sự kiện mới') + ' · ' + STEPS[S.step - 1];
+  if (p === 'layout.color') $$('.swatch').forEach(function (s) { s.classList.remove('on'); });
+  if (p !== 'request') { markDirty(); refreshPreview(); }
+  else S.dirty = true;
+}
+
+function onChange(e) {
+  var t = e.target, p = t.getAttribute('data-p');
+  if (t.hasAttribute('data-photo')) return pickImage(t, 'photo', +t.getAttribute('data-photo'));
+  if (t.hasAttribute('data-logo')) return pickImage(t, 'logo');
+  if (!p) return;
+  if (t.type === 'checkbox') setPath(S.cfg, p, t.checked);
+  else if (t.tagName === 'SELECT') setPath(S.cfg, p, t.value);
+  else return;
+  if (/^fields\.\d+\.type$/.test(p)) {
+    var f = S.cfg.fields[+p.split('.')[1]];
+    if (/radio|select|checkbox/.test(f.type) && !(f.options || []).length) f.options = ['Lựa chọn 1', 'Lựa chọn 2'];
+  }
+  markDirty();
+  refreshPreview();
+  if (t.hasAttribute('data-rerender') || /layout\.blocks/.test(p)) renderStep();
+}
+
+function pickImage(input, kind, i) {
+  var file = input.files && input.files[0];
+  if (!file) return;
+  if (!/^image\//.test(file.type)) return toast('Tệp đã chọn không phải ảnh.');
+  var r = new FileReader();
+  r.onload = function () {
+    var img = new Image();
+    img.onload = function () {
+      var max = kind === 'logo' ? 600 : 700;
+      var s = Math.min(1, max / Math.max(img.width, img.height));
+      var cv = document.createElement('canvas');
+      cv.width = Math.round(img.width * s); cv.height = Math.round(img.height * s);
+      var x = cv.getContext('2d');
+      if (kind !== 'logo') { x.fillStyle = '#fff'; x.fillRect(0, 0, cv.width, cv.height); }
+      x.drawImage(img, 0, 0, cv.width, cv.height);
+      var data = kind === 'logo' ? cv.toDataURL('image/png') : cv.toDataURL('image/jpeg', 0.88);
+      if (kind === 'logo') { S.cfg.layout.logo = data; S.cfg.layout.logoChanged = true; S.cfg.layout.logoRemoved = false; }
+      else { var sp = S.cfg.speakers[i]; sp.photo = data; sp.photoChanged = true; sp.photoRemoved = false; }
+      markDirty(); renderStep(); refreshPreview();
+    };
+    img.onerror = function () { toast('Không đọc được ảnh này, anh thử ảnh JPG hoặc PNG khác.'); };
+    img.src = r.result;
+  };
+  r.readAsDataURL(file);
+}
+
+function move(arr, i, d) {
+  var j = i + d;
+  if (j < 0 || j >= arr.length) return;
+  var t = arr[i]; arr[i] = arr[j]; arr[j] = t;
+}
+
+function onClick(e) {
+  var t = e.target.closest('[data-act]');
+  if (!t) return;
+  var a = t.getAttribute('data-act'), v = t.getAttribute('data-v'), i = +t.getAttribute('data-i'), id = t.getAttribute('data-id');
+  if (t.tagName === 'A' && !t.getAttribute('target')) e.preventDefault();
+  var c = S.cfg;
+  switch (a) {
+    case 'home': return confirmLeave(function () { reloadHome(); });
+    case 'new': return confirmLeave(function () { openEditor(newCfg(), 1); });
+    case 'settings': return openSettings();
+    case 'edit': return loadEvent(id);
+    case 'go': return goStep(+v);
+    case 'prev': return goStep(S.step - 1);
+    case 'next': return goStep(S.step + 1);
+    case 'device':
+      S.device = v;
+      $$('#devSeg button').forEach(function (b) { b.classList.toggle('on', b.getAttribute('data-v') === v); });
+      return fitPreview();
+    case 'parse': {
+      var txt = $('#reqTxt').value;
+      if (!txt.trim()) return toast('Anh dán nội dung yêu cầu vào ô trước.');
+      c.request = txt;
+      applyParsed(parseRequest(txt), false);
+      return renderStep();
+    }
+    case 'ai': {
+      var tx = $('#reqTxt').value;
+      if (!tx.trim()) return toast('Anh dán nội dung yêu cầu vào ô trước.');
+      c.request = tx;
+      t.disabled = true; t.innerHTML = '<span class="spin"></span> Gemini đang đọc...';
+      return call('api_parseAI', tx).then(function (j) {
+        applyParsed(normalizeAI(j), true); renderStep();
+      }).catch(function (err) {
+        applyParsed(parseRequest(tx), false); renderStep();
+        toast('Gemini báo lỗi, phần mềm đã phân tích theo cách thông thường. ' + err, 6000);
+      });
+    }
+    case 'spAdd': c.speakers.push(newSpeaker()); markDirty(); renderStep(); return refreshPreview();
+    case 'spDel': c.speakers.splice(i, 1); markDirty(); renderStep(); return refreshPreview();
+    case 'spUp': move(c.speakers, i, -1); markDirty(); renderStep(); return refreshPreview();
+    case 'rmPhoto': c.speakers[i].photo = ''; c.speakers[i].photoChanged = false; c.speakers[i].photoRemoved = true; markDirty(); renderStep(); return refreshPreview();
+    case 'rmLogo': c.layout.logo = ''; c.layout.logoChanged = false; c.layout.logoRemoved = true; markDirty(); renderStep(); return refreshPreview();
+    case 'fAddPreset': c.fields.push(mapField(v)); uniqKeys(c.fields); markDirty(); renderStep(); return refreshPreview();
+    case 'fAdd':
+      c.fields.push({ key: 'f_' + Date.now().toString(36), label: 'Trường mới ' + (c.fields.length + 1), type: 'text', required: false, unique: false, options: [], other: false, help: '', placeholder: '' });
+      markDirty(); renderStep(); refreshPreview();
+      var ins = $$('.frow .l1 input'); if (ins.length) { ins[ins.length - 1].focus(); ins[ins.length - 1].select(); }
+      return;
+    case 'fDel': c.fields.splice(i, 1); markDirty(); renderStep(); return refreshPreview();
+    case 'fUp': move(c.fields, i, -1); markDirty(); renderStep(); return refreshPreview();
+    case 'fDown': move(c.fields, i, 1); markDirty(); renderStep(); return refreshPreview();
+    case 'tpl': c.layout.template = v; markDirty(); $$('.thumb').forEach(function (x) { x.classList.toggle('on', x.getAttribute('data-v') === v); }); renderStep(); return refreshPreview(true);
+    case 'color': c.layout.color = v; markDirty(); renderStep(); return refreshPreview(true);
+    case 'bUp': move(c.layout.blocks, i, -1); markDirty(); renderStep(); return refreshPreview();
+    case 'bDown': move(c.layout.blocks, i, 1); markDirty(); renderStep(); return refreshPreview();
+    case 'save': return save('draft');
+    case 'publish': return save('publish');
+    case 'copyLink': return copyText(v);
+    case 'saveWa': {
+      var u = $('#wa').value.trim();
+      return call('api_saveSettings', { webAppUrl: u }).then(function (s) {
+        S.settings = s; toast('Đã lưu link ứng dụng web.'); if (S.view === 'edit') renderStep();
+      }).catch(function (err) { toast(err, 5000); });
+    }
+    case 'status':
+      return call('api_setStatus', id, v).then(function (list) {
+        S.events = list;
+        if (S.view === 'edit' && S.cfg && S.cfg.id === id) { S.cfg.status = v; renderStep(); renderSteps(); setFoot(); }
+        else renderHome();
+        toast(v === 'closed' ? 'Đã đóng đăng ký.' : 'Đã mở lại đăng ký.');
+      }).catch(function (err) { toast(err, 5000); });
+    case 'dup':
+      toast('Đang nhân bản...');
+      return call('api_duplicate', id).then(function (list) { S.events = list; renderHome(); toast('Đã tạo bản sao ở dạng nháp.'); })
+        .catch(function (err) { toast(err, 5000); });
+    case 'del':
+      return modal('<h3>Xóa sự kiện?</h3><p>Sự kiện <b>' + esc(v) + '</b> sẽ bị xóa khỏi danh mục và link đăng ký ngừng hoạt động. ' +
+        'Sheet danh sách người đã đăng ký <b>vẫn được giữ lại</b> trong file.</p><div class="btns" style="justify-content:flex-end">' +
+        '<button class="b" data-act="mclose">Không xóa</button><button class="b p" style="background:#b91c1c;border-color:#b91c1c" data-act="delOk" data-id="' + esc(id) + '">Xóa sự kiện</button></div>');
+    case 'delOk':
+      closeModal();
+      return call('api_deleteEvent', id).then(function (list) { S.events = list; renderHome(); toast('Đã xóa sự kiện.'); })
+        .catch(function (err) { toast(err, 5000); });
+    case 'mclose': return closeModal();
+    case 'leaveOk': closeModal(); S.dirty = false; return S._leave && S._leave();
+    case 'saveSet': return saveSettings();
+    case 'web': return openWeb();
+    case 'ghSave': return ghSave();
+    case 'ghDeploy': return ghRun(t, 'api_ghDeploySite', 'Đang đăng website...');
+    case 'ghBackup': return ghRun(t, 'api_backupNow', 'Đang sao lưu...');
+    case 'ghCheck': return ghRun(t, 'api_ghCheck', 'Đang kiểm tra...');
+  }
+}
+
+function confirmLeave(fn) {
+  if (S.view !== 'edit' || !S.dirty) return fn();
+  S._leave = fn;
+  modal('<h3>Chưa lưu thay đổi</h3><p>Sự kiện đang soạn có thay đổi chưa lưu. Anh muốn bỏ các thay đổi này?</p>' +
+    '<div class="btns" style="justify-content:flex-end"><button class="b" data-act="mclose">Ở lại</button><button class="b p" data-act="leaveOk">Bỏ thay đổi</button></div>');
+}
+
+function reloadHome() {
+  setView('home');
+  $('#ed').innerHTML = '<div class="empty"><span class="spin"></span> Đang tải...</div>';
+  call('api_listEvents').then(function (l) { S.events = l; renderHome(); }).catch(function (e) { toast(e, 5000); renderHome(); });
+}
+
+function loadEvent(id) {
+  $('#ed').innerHTML = '<div class="empty"><span class="spin"></span> Đang mở sự kiện...</div>';
+  call('api_getEvent', id).then(function (cfg) {
+    var base = newCfg();
+    cfg.event = Object.assign(base.event, cfg.event || {});
+    cfg.reg = Object.assign(base.reg, cfg.reg || {});
+    cfg.layout = Object.assign(base.layout, cfg.layout || {});
+    openEditor(cfg, 2);
+  }).catch(function (e) { toast(e, 5000); renderHome(); });
+}
+
+function save(action) {
+  var issues = checkCfg(action === 'publish');
+  if (issues.length) {
+    if (action === 'publish') { goStep(6); }
+    return toast(issues[0], 5000);
+  }
+  var c = S.cfg;
+  var payload = clone(c);
+  payload.speakers.forEach(function (sp) { if (!sp.photoChanged) delete sp.photo; });
+  if (!payload.layout.logoChanged) delete payload.layout.logo;
+  var btns = $$('#foot .b');
+  btns.forEach(function (b) { b.disabled = true; });
+  $('#fmsgx').innerHTML = '<span class="spin"></span> Đang lưu...';
+  call('api_saveEvent', payload, action).then(function (res) {
+    c.id = res.id; c.status = res.status; c.sheetName = res.sheetName;
+    res.cfg.speakers.forEach(function (sp, i) {
+      if (c.speakers[i]) { c.speakers[i].photoId = sp.photoId; c.speakers[i].photoChanged = false; c.speakers[i].photoRemoved = false; }
+    });
+    c.layout.logoId = res.cfg.layout.logoId; c.layout.logoChanged = false; c.layout.logoRemoved = false;
+    S.settings.webAppUrl = res.webAppUrl || S.settings.webAppUrl;
+    S.dirty = false;
+    S.savedAt = new Date().toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' });
+    btns.forEach(function (b) { b.disabled = false; });
+    renderSteps(); setFoot();
+    if (action === 'publish') {
+      goStep(6);
+      toast(res.link ? 'Đã xuất bản. Link đăng ký đã sẵn sàng.' : 'Đã xuất bản. Anh cần tạo link công khai (hướng dẫn ở bước 6).', 4000);
+    } else {
+      if (S.step === 6) renderStep();
+      toast('Đã lưu.');
+    }
+    if (res.gh) {
+      if (res.gh.ok) setTimeout(function () { toast(res.gh.msg, 4500); }, action === 'publish' ? 4100 : 2700);
+      else $('#ed').insertAdjacentHTML('afterbegin', '<div class="alert w">' + esc(res.gh.msg) + '</div>');
+    }
+  }).catch(function (err) {
+    btns.forEach(function (b) { b.disabled = false; });
+    setFoot();
+    $('#ed').insertAdjacentHTML('afterbegin', '<div class="alert e">' + esc(err) + '</div>');
+    $('#ed').scrollTop = 0;
+  });
+}
+
+function copyText(t) {
+  var done = function () { toast('Đã sao chép link.'); };
+  var fallback = function () {
+    var x = document.createElement('textarea');
+    x.value = t; document.body.appendChild(x); x.select();
+    try { document.execCommand('copy'); done(); } catch (e) { toast('Anh bôi đen link và bấm Ctrl+C để sao chép.'); }
+    x.remove();
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(done, fallback);
+  else fallback();
+}
+
+function modal(html, cls) { $('#mroot').innerHTML = '<div class="mbg"><div class="modal' + (cls ? ' ' + cls : '') + '">' + html + '</div></div>'; }
+function closeModal() { $('#mroot').innerHTML = ''; }
+
+function openSettings() {
+  var s = S.settings;
+  modal('<h3>Cài đặt</h3>' +
+    '<div class="fg"><label>Link ứng dụng web (link công khai)</label><input class="in" id="setWa" value="' + esc(s.webAppUrl || '') + '" placeholder="https://script.google.com/macros/s/.../exec">' +
+    '<div class="hint">Lấy ở Apps Script: Triển khai &gt; Tùy chọn triển khai mới &gt; Ứng dụng web; Thực thi với tư cách: Tôi; Người có quyền truy cập: Bất kỳ ai. Chỉ làm một lần.</div></div>' +
+    '<div class="fg"><label>Tên người gửi email xác nhận</label><input class="in" id="setSender" value="' + esc(s.senderName || '') + '"></div>' +
+    '<div class="box" style="background:#f8fafc"><h4>Phân tích nâng cao bằng Gemini (không bắt buộc)</h4>' +
+    '<div class="hint" style="margin-bottom:10px">Phần mềm đã tự phân tích được các email giao việc thông thường. Gemini giúp đọc các văn bản viết tự do hơn. ' +
+    'Khóa miễn phí lấy tại aistudio.google.com, mục Get API key.</div>' +
+    '<div class="r2"><div class="fg"><label>Khóa API Gemini</label><input class="in" id="setKey" type="password" placeholder="' + (s.hasGemini ? 'Đã có khóa, để trống nếu giữ nguyên' : 'Dán khóa vào đây') + '"></div>' +
+    '<div class="fg"><label>Mô hình</label><input class="in" id="setModel" value="' + esc(s.geminiModel || 'gemini-2.5-flash') + '"></div></div>' +
+    (s.hasGemini ? '<label class="ck"><input type="checkbox" id="setClear">Xóa khóa đang lưu</label>' : '') + '</div>' +
+    '<div class="hint">Tài khoản chủ sở hữu: ' + esc(s.owner || '') + '</div>' +
+    '<div class="btns" style="justify-content:flex-end"><button class="b" data-act="mclose">Đóng</button><button class="b p" data-act="saveSet">Lưu cài đặt</button></div>');
+}
+
+ 
+function openWeb() {
+  var s = S.settings, g = s.gh || {};
+  var hours = '<option value="-1">Tắt</option>';
+  for (var h = 0; h < 24; h++) hours += '<option value="' + h + '"' + (g.backupHour === h ? ' selected' : '') + '>' + pad2(h) + ':00 hằng ngày</option>';
+  modal('<h3>Website GitHub Pages và sao lưu</h3>' +
+    '<div class="alert i" style="font-size:13px">Repo <b>website</b> để Công khai, chỉ chứa trang đăng ký và thông tin sự kiện. Repo <b>sao lưu</b> để Riêng tư, chứa danh sách người đăng ký. ' +
+    'Token chỉ lưu trong Apps Script của anh, không đưa lên website. Cách tạo repo và token xem trong tệp HUONG_DAN_CAI_DAT.txt, phần B.</div>' +
+    (!s.webAppUrl ? '<div class="alert w">Chưa có link ứng dụng web (/exec). Website cần link này để gửi đăng ký về Google Sheet. Anh tạo link ở mục <a href="#" data-act="settings">Cài đặt</a> trước.</div>' : '') +
+    '<div class="r2"><div class="fg"><label>Tên tài khoản GitHub</label><input class="in" id="ghOwner" value="' + esc(g.owner || '') + '" placeholder="vidu: phongdoingoai-hcmut"></div>' +
+    '<div class="fg"><label>Nhánh</label><input class="in" id="ghBranch" value="' + esc(g.branch || 'main') + '"></div></div>' +
+    '<div class="r2"><div class="fg"><label>Repo website (Công khai)</label><input class="in" id="ghSite" value="' + esc(g.site || '') + '" placeholder="dang-ky-su-kien"></div>' +
+    '<div class="fg"><label>Repo sao lưu (Riêng tư)</label><input class="in" id="ghBackup" value="' + esc(g.backup || '') + '" placeholder="dang-ky-su-kien-du-lieu"></div></div>' +
+    '<div class="fg"><label>Token GitHub</label><input class="in" id="ghToken" type="password" autocomplete="off" placeholder="' +
+    (g.hasToken ? 'Đã lưu token. Để trống nếu giữ nguyên' : 'Dán token bắt đầu bằng github_pat_') + '"></div>' +
+    '<div class="r2"><div class="fg"><label>Sao lưu tự động</label><select class="in" id="ghHour">' + hours + '</select></div>' +
+    '<div class="fg"><label>Tên miền riêng (không bắt buộc)</label><input class="in" id="ghDomain" value="' + esc(g.domain || '') + '" placeholder="Để trống nếu dùng địa chỉ github.io"></div></div>' +
+    '<div class="btns" style="margin-top:0"><button class="b p" data-act="ghSave">Lưu và kiểm tra kết nối</button></div>' +
+    '<div id="ghRes" style="margin-top:14px">' + ghInfoHtml(null) + '</div>' +
+    '<div class="btns" style="justify-content:flex-end;margin-top:16px"><button class="b" data-act="mclose">Đóng</button></div>', 'wide');
+}
+
+function ghInfoHtml(chk) {
+  var s = S.settings, g = s.gh || {};
+  var row = function (k, v) { return '<div class="ghrow"><div class="k2">' + k + '</div><div style="flex:1">' + v + '</div></div>'; };
+  var pill = function (ok, txt) { return '<span class="' + (ok === null ? 'st-off' : ok ? 'st-ok' : 'st-bad') + '">' + txt + '</span>'; };
+  var h = '';
+  if (chk) {
+    if (chk.error) h += '<div class="alert e">' + esc(chk.error) + '</div>';
+    h += row('Repo website', chk.site ? pill(chk.site.ok, chk.site.ok ? 'Đạt' : 'Cần sửa') + esc(chk.site.msg || (chk.site.priv ? '' : 'Công khai, ghi được')) : pill(null, 'Chưa nhập'));
+    h += row('Repo sao lưu', chk.backup ? pill(chk.backup.ok, chk.backup.ok ? 'Đạt' : 'Cần sửa') + esc(chk.backup.msg || 'Riêng tư, ghi được') : pill(null, 'Chưa nhập'));
+    if (chk.pages) h += row('GitHub Pages', chk.pages.on ? pill(true, 'Đã bật') + esc(chk.pages.status === 'built' ? 'Trang đã dựng xong' : 'Trạng thái: ' + (chk.pages.status || 'đang dựng')) : pill(null, 'Chưa bật') + 'Bấm "Đăng toàn bộ website" để phần mềm tự bật.');
+  }
+  h += row('Địa chỉ website', g.siteUrl ? '<a target="_blank" href="' + esc(g.siteUrl) + '">' + esc(g.siteUrl) + '</a>' + (g.siteAt ? '<div class="hint">Đăng gần nhất: ' + esc(g.siteAt) + '</div>' : '') : '<span class="hint">Chưa cấu hình</span>');
+  h += row('Sao lưu gần nhất', g.backupAt ? esc(g.backupAt) + '<div class="hint">' + esc(g.backupMsg) + '</div>' : '<span class="hint">Chưa sao lưu lần nào</span>');
+  h += '<div class="btns"><button class="b g" data-act="ghDeploy"' + (g.siteUrl && g.hasToken ? '' : ' disabled') + '>Đăng toàn bộ website</button>' +
+    '<button class="b" data-act="ghBackup"' + (g.backup && g.hasToken ? '' : ' disabled') + '>Sao lưu ngay</button>' +
+    '<button class="b" data-act="ghCheck"' + (g.hasToken ? '' : ' disabled') + '>Kiểm tra lại</button></div>';
+  return h;
+}
+
+function ghSave() {
+  var o = { owner: $('#ghOwner').value, site: $('#ghSite').value, backup: $('#ghBackup').value, branch: $('#ghBranch').value,
+    token: $('#ghToken').value, domain: $('#ghDomain').value };
+  var hour = +$('#ghHour').value;
+  var btn = $('[data-act=ghSave]');
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> Đang kiểm tra...';
+  call('api_ghSave', o).then(function (chk) {
+    S.settings.gh = chk.info;
+    var g = chk.info;
+    var p = g.backupHour !== hour && (hour < 0 || g.backup) ? call('api_setBackupHour', hour) : Promise.resolve(g);
+    return p.then(function (info) {
+      S.settings.gh = info;
+      return call('api_getSettings');
+    }).then(function (st) {
+      S.settings = st;
+      btn.disabled = false; btn.textContent = 'Lưu và kiểm tra kết nối';
+      $('#ghToken').value = '';
+      $('#ghToken').placeholder = 'Đã lưu token. Để trống nếu giữ nguyên';
+      $('#ghRes').innerHTML = ghInfoHtml(chk);
+      if (S.view === 'home') renderHome();
+    });
+  }).catch(function (err) {
+    btn.disabled = false; btn.textContent = 'Lưu và kiểm tra kết nối';
+    $('#ghRes').innerHTML = '<div class="alert e">' + esc(err) + '</div>' + ghInfoHtml(null);
+  });
+}
+
+function ghRun(btn, fn, busy) {
+  var old = btn.textContent;
+  btn.disabled = true; btn.innerHTML = '<span class="spin"></span> ' + busy;
+  call(fn).then(function (r) {
+    if (r.info) S.settings.gh = r.info;
+    var chk = fn === 'api_ghCheck' ? r : null;
+    var note = '';
+    if (fn === 'api_backupNow') note = '<div class="alert s">' + esc(r.msg) + '</div>';
+    if (fn === 'api_ghDeploySite') {
+      S.settings.siteUrl = r.siteUrl;
+      note = r.pages && r.pages.on
+        ? '<div class="alert s">Đã đăng website. GitHub cần khoảng 1 đến 2 phút để dựng trang' + (r.pages.created ? ' lần đầu (có thể lâu hơn, đến khoảng 10 phút)' : '') +
+          '. Địa chỉ: <a target="_blank" href="' + esc(r.siteUrl) + '">' + esc(r.siteUrl) + '</a></div>'
+        : '<div class="alert w">Đã đẩy tệp lên repo nhưng phần mềm chưa tự bật được GitHub Pages (' + esc(r.pages && r.pages.msg || '') + '). Anh bật tay một lần: ' +
+          'mở repo website trên GitHub > Settings > Pages > mục Build and deployment, Source chọn <b>Deploy from a branch</b>, Branch chọn <b>' + esc(S.settings.gh.branch || 'main') + '</b> và <b>/ (root)</b> > Save.</div>';
+    }
+    $('#ghRes').innerHTML = note + ghInfoHtml(chk);
+    if (S.view === 'home') renderHome();
+  }).catch(function (err) {
+    btn.disabled = false; btn.textContent = old;
+    $('#ghRes').insertAdjacentHTML('afterbegin', '<div class="alert e">' + esc(err) + '</div>');
+  });
+}
+
+function saveSettings() {
+  var o = { webAppUrl: $('#setWa').value.trim(), senderName: $('#setSender').value.trim(), geminiKey: $('#setKey').value.trim(),
+    geminiModel: $('#setModel').value.trim(), clearGemini: $('#setClear') ? $('#setClear').checked : false };
+  call('api_saveSettings', o).then(function (s) {
+    S.settings = s; closeModal(); toast(s.ghMsg ? 'Đã lưu cài đặt. ' + s.ghMsg : 'Đã lưu cài đặt.', 4500);
+    if (S.view === 'home') renderHome(); else renderStep();
+  }).catch(function (err) { toast(err, 5000); });
+}
+</script>
+
+
+<script>
+if (MODE === 'admin') bootAdmin();
+else if (MODE === 'site') bootSite();
+else bootPublic();
+</script>
+</body>
+</html>
