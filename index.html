@@ -24,7 +24,7 @@
 
 var MODE = "site";
 
-var BOOT = {"api":"https://script.google.com/macros/s/AKfycbzRf0CS6Y2PQ85v5ZHHkfe9Nl1VR6f7Vf0GUBDqVs-VZJ5j-weu7p6HFx90UVJuptpm/exec","name":"Phòng Đối ngoại - Trường Đại học Bách khoa-ĐHQG-HCM","footer":"Phòng Đối ngoại","built":"27/11/2026 06:16"};
+var BOOT = {"api":"https://script.google.com/macros/s/AKfycbzRf0CS6Y2PQ85v5ZHHkfe9Nl1VR6f7Vf0GUBDqVs-VZJ5j-weu7p6HFx90UVJuptpm/exec","name":"Phòng Đối ngoại - Trường Đại học Bách khoa-ĐHQG-HCM","footer":"Phòng Đối ngoại","built":"27/11/2026 07:43"};
 
 </script>
 
@@ -1591,11 +1591,9 @@ function siteLanding() {
 
 <script>
 
-if (MODE === 'admin') bootAdmin();
+if (MODE === 'site') bootSite();
 
-else if (MODE === 'site') bootSite();
-
-else bootPublic();
+else if (MODE !== 'admin') bootPublic();
 
 </script>
 
